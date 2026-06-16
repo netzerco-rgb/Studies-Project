@@ -1,6 +1,49 @@
 import os
+import subprocess
+import sys
+import argparse
+from typing import List
 
-def generate_dynamic_ssp_smv(elements, output_filename="dynamic_ssp.smv"):
+def run_nuxmv(smv_file_path: str) -> None:
+    """
+    Executes the nuXmv model checker on the provided SMV file.
+    """
+    # command to execute nuXmv in the command line
+    command = ['nuXmv', smv_file_path]
+    
+    try:
+        result = subprocess.run(
+            command, 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+
+        # print the standard output
+        print("\n--- nuXmv Execution Output ---")
+        print(result.stdout)
+        
+        # handle cases where nuXmv was executed and print it's original error message
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing nuXmv. Exit code: {e.returncode}")
+        print("--- Error Output ---")
+        print(e.stderr)
+        sys.exit(1)
+        
+        # handle cases where nuXmv executable is not found by the OS
+    except FileNotFoundError:
+        print("Error: 'nuXmv' executable not found. Verify it is added to the system's PATH.")
+        sys.exit(1)
+
+
+def generate_dynamic_ssp_smv(elements: List[int], output_filename: str = "dynamic_ssp.smv") -> str:
+    """
+    generates a dynamic SMV model for the subset sum problem based on a list of elements.
+    """
+    # input validation: elements must be a non-empty list of positive integers
+    if not elements or any(e <= 0 for e in elements):
+        raise ValueError("Error: Elements must be a non-empty list of positive integers.")
+
     # 1. calculating the maximum sum
     max_sum = sum(elements)
     
@@ -88,17 +131,41 @@ CTLSPEC NAME alway_right_path := AG ((_row=max_sum) -> (_sum & !_xsum));
         
     print(f"Successfully generated '{output_filename}' for elements: {elements}")
     print(f"Target Valid Sums: {sorted(valid_sums)}")
+    
     return output_filename
 
 
-
 if __name__ == "__main__":
-
-    # it is possible to insert any list of numbers here
-    my_elements = [3, 4, 7, 5, 1] 
     
-    # getting the directory of this code file and setting the output path (for the SMV file) by that
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(script_dir, 'dynamic_ssp.smv')
+    # setup the argument parser
+    parser = argparse.ArgumentParser(
+        description="Dynamic Subset Sum Problem (SSP) Model Generator and Verifier for nuXmv."
+    )
     
-    generate_dynamic_ssp_smv(my_elements, output_path)
+    # define the 'elements' argument as a list of integers (nargs='+' means one or more arguments)
+    parser.add_argument(
+        'elements', 
+        metavar='N', 
+        type=int, 
+        nargs='+',
+        help='A list of positive integers representing the subset sum elements (separated by spaces).'
+    )
+    
+    # parse the arguments from the command line
+    args = parser.parse_args()
+    
+    try:
+        # getting the directory of this code file and setting the output path (for the SMV file) by that
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        output_path = os.path.join(script_dir, 'dynamic_ssp.smv')
+        
+        # generating the SMV file using the provided arguments from command line
+        generate_dynamic_ssp_smv(args.elements, output_path)
+        
+        # automatically running nuXmv on the generated file
+        run_nuxmv(output_path)
+        
+    except ValueError as e:
+        # catching the validation error (e.g., if negative numbers were provided)
+        print(e)
+        sys.exit(1)
