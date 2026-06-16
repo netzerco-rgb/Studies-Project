@@ -26,8 +26,8 @@ def run_nuxmv(smv_file_path):
         print(e.stderr)
         sys.exit(1)
         
-    except FileNotFoundError:
         # handle cases where nuXmv executable is not found by the OS
+    except FileNotFoundError:
         print("Error: 'nuXmv' executable not found.")
         print("Verify that nuXmv is installed and added to the system's PATH.")
         sys.exit(1)
