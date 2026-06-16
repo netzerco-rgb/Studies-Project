@@ -1,78 +1,42 @@
-import subprocess   # this library enables python to "run" an external progs
+import subprocess
+import sys
 import os
-import re
 
-def run_isolated_agent(file_path):
-    if not os.path.exists(file_path):
-        print(f"Error: file {file_path} not found.")
-        return
-
-    with open(file_path, 'r', encoding='utf-8') as f:
-        file_content = f.read()
-
-    pattern = r'((?:CTLSPEC|LTLSPEC|INVARSPEC|SPEC)\s+NAME\s+(\w+)\s+:=[\s\S]*?;)'
-
-    # keeps all specifications in a List which holds in evary posioton the entire specification text + it's name
-    specs = re.findall(pattern, file_content)   
-
-    if not specs:
-        print("No named specifications found in the SMV file.")
-        return
-
-    # remove all specifications to create a clean "base model" of the SMV file
-    base_model = re.sub(pattern, '', file_content)
-
-    print(f"Agent detected {len(specs)} specifications. Running isolated tests...")
-    
-    passed_specs = 0
-    total_specs = len(specs)
-    
-    # creating a temporary file in the same directory
-    temp_file_path = os.path.join(os.path.dirname(file_path), 'temp_agent_run.smv')
-
-    print("\n--- Agent Analysis Report ---")
+def run_nuxmv(smv_file_path):
+    # command to execute nuXmv in the command line
+    command = ['nuXmv', smv_file_path]
     
     try:
-        for idx, (full_spec_text, spec_name) in enumerate(specs, 1):     # idx holds the value of enumerate counter which initialized to 1
-            # 1. writing the base model and just one specification to the temp file
-            with open(temp_file_path, 'w', encoding='utf-8') as temp_file:
-                temp_file.write(base_model)
-                temp_file.write("\n\n-- Injected by Agent for isolation:\n")
-                temp_file.write(full_spec_text)
-                temp_file.write("\n")
-
-            # 2. run nuXmv on the temp file
-            result = subprocess.run(
-                ['nuXmv', temp_file_path], 
-                capture_output=True, 
-                text=True
-            )
-            output = result.stdout  # holds the entire terminal output who made ny nuXmv
-            
-            # 3. analyze the result and since there's only 1 spec, we just search for its result
-            status = "UNKNOWN"
-            if re.search(r'--\s+specification.*is\s+true', output, re.IGNORECASE):
-                status = "TRUE"
-                passed_specs += 1
-            elif re.search(r'--\s+specification.*is\s+false', output, re.IGNORECASE):
-                status = "FALSE"
-            elif "error" in output.lower() or "syntax" in output.lower():
-                status = "ERROR IN SMV CODE"
-            
-            print(f"[{idx}/{total_specs}] Spec: {spec_name} -> RESULT: {status}")
-
-    except Exception as e:
-        print("An error occurred during execution:", str(e))
+        # execute the command and capture standard output and error streams
+        result = subprocess.run(
+            command, 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
         
-    finally:
-        # 4. cleaning up the temporary file
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-
-    print("-------------------------------------------------")
-    print(f"Summary: {passed_specs}/{total_specs} specifications are TRUE")
+        # print the standard output
+        print("--- nuXmv Execution Output ---")
+        print(result.stdout)
+        
+        # handle cases where nuXmv was executed and print it's original error message
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing nuXmv. Exit code: {e.returncode}")
+        print("--- Error Output ---")
+        print(e.stderr)
+        sys.exit(1)
+        
+    except FileNotFoundError:
+        # handle cases where nuXmv executable is not found by the OS
+        print("Error: 'nuXmv' executable not found.")
+        print("Verify that nuXmv is installed and added to the system's PATH.")
+        sys.exit(1)
 
 if __name__ == "__main__":
+    # get the path of the directory containing this python file
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    smv_file_path = os.path.join(script_dir, 'SSP347_version_2.smv')
-    run_isolated_agent(smv_file_path)
+    
+    # dynamically join the directory path with the SMV file name to create a full path
+    model_path = os.path.join(script_dir, 'SSP347_version_2.smv')
+    
+    run_nuxmv(model_path)
