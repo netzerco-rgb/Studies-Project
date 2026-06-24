@@ -1,0 +1,54 @@
+MODULE main
+
+VAR
+  step : 0..3;   -- progress counter through the network 
+  curr_node : 1..4;  -- current vertex where the biological agent is located
+  
+  --  Flags (taggs) to remember which vertices have been visited
+  visited_1 : boolean;
+  visited_2 : boolean;
+  visited_3 : boolean;
+  visited_4 : boolean;
+
+ASSIGN
+  -- initial State: agent can be injected into any node at column 0
+  init(step) := 0;
+  init(curr_node) := {1, 2, 3, 4};
+
+  -- only the starting node is marked as visited
+  init(visited_1) := (curr_node = 1);
+  init(visited_2) := (curr_node = 2);
+  init(visited_3) := (curr_node = 3);
+  init(visited_4) := (curr_node = 4);
+
+  -- move to the next step. Stop when reaching the end of the network (step 3)
+  next(step) := case
+    step < 3 : step + 1;
+    TRUE     : step;
+  esac;
+
+  -- possible moves of the agents depends on the given graph structure
+  next(curr_node) := case
+    step = 3 : curr_node; -- the network ends here so agents stop
+    curr_node = 1 : {2, 3, 4};
+    curr_node = 2 : {1, 3};
+    curr_node = 3 : {1, 2, 4};
+    curr_node = 4 : {1, 3};
+    
+    TRUE : curr_node;
+  esac;
+
+  -- Keeps the flag TRUE if already visited, or set it to TRUE if we just entered the node
+  next(visited_1) := (next(curr_node) = 1) | visited_1;
+  next(visited_2) := (next(curr_node) = 2) | visited_2;
+  next(visited_3) := (next(curr_node) = 3) | visited_3;
+  next(visited_4) := (next(curr_node) = 4) | visited_4;
+
+
+
+-- specification 1: existence check - is there a Hamiltonian path in the network?
+CTLSPEC EF (step = 3 & visited_1 & visited_2 & visited_3 & visited_4)
+
+
+-- specification 2: extracting a hmoltonian path if one exists
+CTLSPEC !(EF (step = 3 & visited_1 & visited_2 & visited_3 & visited_4))
