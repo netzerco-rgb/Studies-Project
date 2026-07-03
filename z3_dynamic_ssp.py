@@ -19,22 +19,22 @@ from z3 import (
 """
 CMD examples:
 - Verify no wrong path exists:
-  python Z3_DynamicSSP.py 3 4 7
+  python z3_dynamic_ssp.py 3 4 7
 
 - Verify with tracked points:
-  python Z3_DynamicSSP.py 3 4 7 --track 3,1 7,3 14,8
+  python z3_dynamic_ssp.py 3 4 7 --track 3,1 7,3 14,8
 
 - Check if sum is valid:
-  python Z3_DynamicSSP.py 3 4 7 --check-sum 10
+  python z3_dynamic_ssp.py 3 4 7 --check-sum 10
 
 - Show any correct path:
-  python Z3_DynamicSSP.py 3 4 7 --show-correct-path
+  python z3_dynamic_ssp.py 3 4 7 --show-correct-path
 
 - Show correct path for sum 10:
-  python Z3_DynamicSSP.py 3 4 7 --show-correct-path 10
+  python z3_dynamic_ssp.py 3 4 7 --show-correct-path 10
 
 - Show correct path for sum 10 with tracked points:
-  python Z3_DynamicSSP.py 3 4 7 --show-correct-path 10 --track 3,1 7,3 14,8
+  python z3_dynamic_ssp.py 3 4 7 --show-correct-path 10 --track 3,1 7,3 14,8
 """
 
 # constants
