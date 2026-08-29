@@ -1,5 +1,4 @@
 MODULE main
-
 ----------------------------THE GRAPH---------------------------
 -- vertices: v1,v2,v3,v4
 -- v1 v2
@@ -14,8 +13,9 @@ VAR
 --step_num : 1..5; --error test
 
   pos : {v1, v2, v3, v4, dead}; --graph vetices
-  mid_pos: {none, v1_s1, v1_s2}; --spliter vertices where none means that the agent is in pos vertex
+  mid_pos: {none, v1_s1}; --spliter vertices where none means that the agent is in pos vertex
   step_num : 1..4;
+  direction : {down, diag};
 
  -- tags which indicate if we passed those locations in our path
   visited_1 : boolean; --tag for v1
@@ -26,15 +26,24 @@ VAR
 DEFINE
 --done := (step_num = 5); --error test
 
+  is_split_junction:= 
+  (pos=v1 & mid_pos=none) | 
+  (pos=v1 & mid_pos=v1_s1) | 
+  (pos=v3 & mid_pos=none);
+
+  is_pass_junction:= 
+  (pos=v2 & mid_pos=none) | 
+  (pos=v4 & mid_pos=none);
+
   done := (step_num = 4);
   at_graph_vertex := mid_pos = none & pos != dead;
  
   legal_move_exists := at_graph_vertex &
     (
       (pos = v1 & (!visited_2 | !visited_3 | !visited_4)) |
-      (pos = v2 & (!visited_1 | !visited_3)) |
-      (pos = v3 & (!visited_1 | !visited_2 | !visited_4)) |
-      (pos = v4 & (!visited_1 | !visited_3))
+      (pos = v2 & (!visited_3)) |
+      (pos = v3 & (!visited_2 | !visited_4)) |
+      (pos = v4 & (!visited_3))
     );
 
   no_legal_move := !done & at_graph_vertex & !legal_move_exists;
@@ -45,17 +54,29 @@ ASSIGN
   init(pos) := v1; 
   init(mid_pos):= none;
   init(step_num) := 1; 
+  init(direction) := down;
 
   init(visited_1) := TRUE;
   init(visited_2) := FALSE;
   init(visited_3) := FALSE;
   init(visited_4) := FALSE;
 
-TRANS
+  next(direction) :=
+  case
+    done : direction;
+    pos = dead : direction;
 
+    is_split_junction : {down, diag};
+    is_pass_junction  : direction;
+
+    TRUE : direction;
+  esac;
+
+TRANS
 -- when at the end all vetices were visited we stay in this state -win
   (
     done &
+    next(direction) = direction &
     next(pos) = pos &
     next(mid_pos) = mid_pos &
     next(step_num) = step_num &
@@ -69,8 +90,9 @@ TRANS
 -- when we reach a dead end we stay in it - fail
   (
     pos = dead &
+    next(direction) = direction &
     next(pos) = dead &
-    next(mid_pos) = mid_pos &
+    next(mid_pos) = none &
     next(step_num) = step_num &
     next(visited_1) = visited_1 &
     next(visited_2) = visited_2 &
@@ -82,8 +104,9 @@ TRANS
 --no legal move so next move is a dead end - fail
   (
     no_legal_move &
+    next(direction) = direction &
     next(pos) = dead &
-    next(mid_pos) = mid_pos &
+    next(mid_pos) = none &
     next(step_num) = step_num &
     next(visited_1) = visited_1 &
     next(visited_2) = visited_2 &
@@ -94,15 +117,33 @@ TRANS
   |
   
 ---------------------------------------------------------------
--- for v1 there are 3 neighbors: v2, v3, v4
----------------------------------------------------------------
+--v1 split to: v2(down) and v1_v1(diag)
+--------------------------------------------------------------- 
+  -- v1 -> v2
+  (
+    step_num < 4 &
+    pos = v1 &
+    mid_pos = none &
+    !visited_2 &
+    next(direction) = down &
+    next(pos) = v2 &
+    next(mid_pos) = none &
+    next(step_num) = step_num + 1 &
+    next(visited_1) = visited_1 &
+    next(visited_2) = TRUE &
+    next(visited_3) = visited_3 &
+    next(visited_4) = visited_4
+  )
+
+  |
 
   -- v1 -> v1_s1
   (
     step_num < 4 &
     pos = v1 &
     mid_pos = none &
-    (!visited_2 | !visited_3 | !visited_4) &
+    next(direction) = diag &
+    (!visited_3 | !visited_4) &
     next(pos) = v1 &
     next(mid_pos) = v1_s1 &
     next(step_num) = step_num &
@@ -112,44 +153,17 @@ TRANS
     next(visited_4) = visited_4
   )
 
-  |
- 
-  -- v1_s1 -> v2
-  (
-    pos = v1 &
-    mid_pos = v1_s1 &
-    !visited_2 &
-    next(pos) = v2 &
-    next(mid_pos) = none &
-    next(step_num) = step_num + 1 &
-    next(visited_1) = visited_1 &
-    next(visited_2) = TRUE &
-    next(visited_3) = visited_3 &
-    next(visited_4) = visited_4
-  )
-
-  |
-
-  -- v1_s1 -> v1_s2
-  (
-    pos = v1 &
-    mid_pos = v1_s1 &
-    (!visited_3 | !visited_4) &
-    next(pos) = v1 &
-    next(mid_pos) = v1_s2 &
-    next(step_num) = step_num &
-    next(visited_1) = visited_1 &
-    next(visited_2) = visited_2 &
-    next(visited_3) = visited_3 &
-    next(visited_4) = visited_4
-  )
-
-  |
-
-  -- v1_s2 -> v3
+ |
+---------------------------------------------------------------
+--v1_s1 split to: v3(down) and v4(diag)
+---------------------------------------------------------------
+  -- v1_s1 -> v3 (down)
   (
     step_num < 4 &
-    pos = v1 & mid_pos = v1_s2 & !visited_3 &
+    pos = v1 & 
+    mid_pos = v1_s1 & 
+    !visited_3 &
+    next(direction) = down &
     next(pos) = v3 &
     next(mid_pos) = none &
     next(step_num) = step_num + 1 &
@@ -161,10 +175,13 @@ TRANS
 
   |
 
-  -- v1_s2 -> v4
+  -- v1_s1 -> v4 (diag)
   (
     step_num < 4 &
-    pos = v1 & mid_pos = v1_s2 & !visited_4 &
+    pos = v1 & 
+    mid_pos = v1_s1 & 
+    !visited_4 &
+    next(direction) = diag &
     next(pos) = v4 &
     next(mid_pos) = none &
     next(step_num) = step_num + 1 &
@@ -177,14 +194,16 @@ TRANS
   |
 
 ---------------------------------------------------------------
--- for v2 there is 1 neighbor: v3
---(for v1 is the starting point)
+--v2 pass to: v3
 ---------------------------------------------------------------
 
   -- v2 -> v3
   (
     step_num < 4 &
-    pos = v2 & !visited_3 &
+    pos = v2 & 
+    mid_pos = none &
+    !visited_3 &
+    next(direction) = direction &
     next(pos) = v3 &
     next(mid_pos) = none &
     next(step_num) = step_num + 1 &
@@ -197,14 +216,16 @@ TRANS
   |
 
 ---------------------------------------------------------------
--- for v3 there are 2 neighbors: v2, v4
---(for v1 is the starting point)
+--v3 split to: v2(down) and v4(diag)
 ---------------------------------------------------------------
 
-  -- v3 -> v2
+  -- v3 -> v2 (down)
   (
     step_num < 4 &
-    pos = v3 & !visited_2 &
+    pos = v3 & 
+    mid_pos = none &
+    !visited_2 &
+    next(direction) = down &
     next(pos) = v2 &
     next(mid_pos) = none &
     next(step_num) = step_num + 1 &
@@ -216,10 +237,13 @@ TRANS
 
   |
 
-  -- v3 -> v4
+  -- v3 -> v4 (diag)
   (
     step_num < 4 &
-    pos = v3 & !visited_4 &
+    pos = v3 & 
+    mid_pos = none &
+    !visited_4 &
+    next(direction) = diag &
     next(pos) = v4 &
     next(mid_pos) = none &
     next(step_num) = step_num + 1 &
@@ -232,14 +256,16 @@ TRANS
   |
 
 ---------------------------------------------------------------
--- for v3 there is 1 neighbor: v3
---(for v1 is the starting point)
+--v4 pass to: v3
 ---------------------------------------------------------------
 
-  -- v4 -> v3
+  -- v4 -> v3 
   (
     step_num < 4 &
-    pos = v4 & !visited_3 &
+    pos = v4 & 
+    mid_pos = none &
+    !visited_3 &
+    next(direction) = direction &
     next(pos) = v3 &
     next(mid_pos) = none &
     next(step_num) = step_num + 1 &
@@ -250,4 +276,4 @@ TRANS
   );
 
 CTLSPEC NAME exists_hamiltonian_path := EF(done)
---CTLSPEC NAME show_stuck_path := AG(!no_legal_move) --check wrong move ecample in CMD
+--CTLSPEC NAME show_stuck_path := AG(!no_legal_move) --check wrong move example in CMD
