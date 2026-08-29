@@ -276,4 +276,4 @@ TRANS
   );
 
 CTLSPEC NAME exists_hamiltonian_path := EF(done)
---CTLSPEC NAME show_stuck_path := AG(!no_legal_move) --check wrong move example in CMD
+--CTLSPEC NAME no_hamiltonian_path := AG(!no_legal_move) --check the right path in CMD
