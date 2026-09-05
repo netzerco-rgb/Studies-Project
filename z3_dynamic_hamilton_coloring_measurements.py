@@ -13,7 +13,7 @@ def find_hamiltonian_path_z3(graph):
     
     solver = Solver()
     
-    # creates integer variables for each step in the path
+    # create integer variables for each step in the path
     path = [Int(f"step_{i}") for i in range(num_nodes)]
     
     # constraint 1 - every step must be a valid node from the graph
@@ -38,7 +38,7 @@ def find_hamiltonian_path_z3(graph):
     return solver, path
 
 if __name__ == "__main__":
-    # checks if arguments were provided in the command line
+    # check if arguments were provided in the command line
     if len(sys.argv) < 2:
         print("Usage: python z3_hamiltonian.py <edge1> <edge2> ...")
         print("Example: python z3_hamiltonian.py v1-v2 v1-v3 v1-v4 v2-v3 v3-v4")
@@ -71,12 +71,12 @@ if __name__ == "__main__":
     # execution mechanism and accurate performance measurement for Z3
     z3_start_time = time.perf_counter()
     
-    # checks satisfiability of the constraints
+    # check satisfiability of the constraints
     result = solver.check()
     
     z3_end_time = time.perf_counter()
     
-    # Get memory consumption of the current Python process running Z3 directly
+    # getting memory consumption of the current Python process running Z3 directly
     p = psutil.Process()
     mem_info = p.memory_info()
     # pulling the most accurate data from Windows, or using the standard data on other systems
