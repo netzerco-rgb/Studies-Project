@@ -1,11 +1,11 @@
 import sys
 import subprocess
 import time
-import tracemalloc
+import psutil
 
 def generate_tagging_smv(graph):
     """
-    generates an SMV file for finding a Hamiltonian path using the tagging approach.
+    Generates an SMV file for finding a Hamiltonian path using the tagging approach.
     graph - a dictionary representing the adjacency list of an undirected graph.
     """
     num_nodes = len(graph)
@@ -46,7 +46,7 @@ def generate_tagging_smv(graph):
     smv += "\n  next(curr_node) := case\n"
     smv += f"    step = {max_step} : curr_node;\n"
 
-    # loop creates tne next possible moves of the agent from it's current position
+    # loop creates the next possible moves of the agent from it's current position
     for node in sorted(graph.keys()):
         numeric_node = int(node.replace('v', ''))
         numeric_neighbors = sorted([int(neighbor.replace('v', '')) for neighbor in graph[node]])
@@ -64,22 +64,18 @@ def generate_tagging_smv(graph):
     visited_cond = " & ".join([f"visited_{n}" for n in nodes])
     full_cond = f"(step = {max_step} & {visited_cond})"
     
-    smv += "\n-- specification: extracting a hamiltonian path if one exists\n"
+    smv += "\n-- Specification: extracting a hamiltonian path if one exists\n"
     smv += f"CTLSPEC !(EF {full_cond})\n"
     
     return smv
 
 
 if __name__ == "__main__":
-    # check if arguments were provided in command line
+    # check if arguments were provided in the command line
     if len(sys.argv) < 2:
         print("Usage: python generate_smv.py <edge1> <edge2> ...")
         print("Example: python generate_smv.py v1-v2 v1-v3 v1-v4 v2-v3 v3-v4")
         sys.exit(1)
-
-    # start measuring execution time and memory usage for the script
-    tracemalloc.start()
-    script_start_time = time.perf_counter()
 
     # building the graph dictionary from command line arguments
     G = {}
@@ -92,7 +88,7 @@ if __name__ == "__main__":
             
         u, v = edge.split('-')
         
-        # initialize nodes if they don't exist and makes sure that every vertex has a list
+        # initialize nodes if they don't exist and make sure that every vertex has a list
         if u not in G: G[u] = []
         if v not in G: G[v] = []
         
@@ -112,20 +108,40 @@ if __name__ == "__main__":
     print("-" * 40)
     print("Running nuXmv automatically...\n")
     
-    # automatically execute nuXmv on the generated file and measure its specific execution time
+    # execution mechanism and accurate performance measurement for the nuXmv process
     nuxmv_start_time = time.perf_counter()
+    max_mem_bytes = 0
+    
     try:
-        subprocess.run(["nuXmv", file_name])
+        # opening a separate process instead of passive waiting allows us to sample it
+        process = subprocess.Popen(["nuXmv", file_name])
+        p = psutil.Process(process.pid)
+        
+        # sampling loop - as long as the process is running, check its memory consumption
+        while process.poll() is None:
+            try:
+                mem_info = p.memory_info()
+                # pulling the most accurate data from Windows, or using the standard data on other systems
+                current_mem = getattr(mem_info, 'peak_wset', mem_info.rss)
+                if current_mem > max_mem_bytes:
+                    max_mem_bytes = current_mem
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                # if the process finished in this exact millisecond, the loop will stop
+                break
+            
+            # minimal delay to avoid creating artificial load on the CPU
+            time.sleep(0.001)
+            
+        # wait for the process to fully complete in case it hasn't completely closed yet
+        process.wait()
+        
     except FileNotFoundError:
         print("Error: nuXmv command not found. Please ensure it is added to your system PATH.")
         sys.exit(1)
+        
     nuxmv_end_time = time.perf_counter()
-
-    # finishing measurements
-    script_end_time = time.perf_counter()
-    current_mem, peak_mem = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-
+    
+    # printing the performance report in the exact required format
     print("\n--- Performance Metrics ---")
     print(f"Execution Time: {nuxmv_end_time - nuxmv_start_time:.4f} seconds")
-    print(f"Max Memory Usage (nuXmv): {peak_mem / 1024:.2f} KB")
+    print(f"Max Memory Usage (nuXmv): {max_mem_bytes / 1024:.2f} KB")
