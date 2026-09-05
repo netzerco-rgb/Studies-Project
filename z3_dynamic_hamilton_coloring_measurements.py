@@ -5,7 +5,7 @@ from z3 import *
 
 def find_hamiltonian_path_z3(graph):
     """
-    Finds a Hamiltonian path in an undirected graph using Z3.
+    finds a Hamiltonian path in an undirected graph using Z3.
     graph - a dictionary representing the adjacency list.
     """
     nodes = sorted([int(n.replace('v', '')) for n in graph.keys()])
