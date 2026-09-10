@@ -3,6 +3,8 @@ import re
 import sys
 import argparse
 import subprocess
+import time
+import psutil
 from typing import Dict, List
 
 """
@@ -24,29 +26,63 @@ def run_nuxmv(smv_file_path: str) -> None:
     # command to execute nuXmv in the command line
     command = ["nuXmv", smv_file_path]
 
+    # Performance Metrics
     try:
-        result = subprocess.run(
+        start_time = time.perf_counter()
+        process = subprocess.Popen(
             command,
-            capture_output=True,
-            text=True,
-            check=True
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
+
+        ps_process = psutil.Process(process.pid)
+        peak_memory_kb = 0
+
+        # measure memory while nuXmv is running
+        while process.poll() is None:
+            try:
+                memory_kb = (
+                    ps_process.memory_info().rss / 1024
+                )
+                peak_memory_kb = max(
+                    peak_memory_kb,
+                    memory_kb
+                )
+            except psutil.NoSuchProcess:
+                break
+            time.sleep(0.01)
+
+        stdout, stderr = process.communicate()
+        end_time = time.perf_counter()
+
+        # handle cases where nuXmv was executed and print it's original error message
+        if process.returncode != 0:
+            print(f"Error executing nuXmv. Exit code: {process.returncode}")
+            print("--- Error Output ---")
+            print(stderr)
+            sys.exit(1)
+
         # print the standard output
         print("\n--- nuXmv Execution Output ---")
-        print(result.stdout)
+        print(stdout)
 
-    # handle cases where nuXmv was executed and print it's original error message
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing nuXmv. Exit code: {e.returncode}")
-        print("--- Error Output ---")
-        print(e.stderr)
-        sys.exit(1)
-
+        # print Performance Metrics
+        print("\n--- Performance Metrics ---")
+        print(
+            f"Execution Time: "
+            f"{end_time - start_time:.4f} seconds"
+        )
+        print(
+            f"Max Memory Usage (nuXmv): "
+            f"{peak_memory_kb:.2f} KB"
+        )
     # handle cases where nuXmv executable is not found by the OS
     except FileNotFoundError:
         print(
             "Error: 'nuXmv' executable not found. "
-            "Verify that nuXmv is installed and added to the system PATH."
+            "Verify that nuXmv is installed and "
+            "added to the system PATH."
         )
         sys.exit(1)
 
@@ -70,39 +106,31 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
         )
 
     graph_sets = {}
-
     with open(file_path, "r", encoding="utf-8") as file:
-
         for line_number, line in enumerate(file, start=1):
             line = line.strip()
-
             # ignore empty lines and comments
             if not line:
                 continue
-
             if line.startswith("#") or line.startswith("--"):
                 continue
-
             # remove inline comments
             if "#" in line:
                 line = line.split("#", 1)[0].strip()
-
             if not line:
                 continue
 
-            # Optional vertices declaration, for example: vertices: v1 v2 v3 v4
+            # optional vertices declaration, for example: vertices: v1 v2 v3 v4
             if line.lower().startswith("vertices:"):
-
                 vertex_text = line.split(":", 1)[1]
                 vertices = vertex_text.replace(",", " ").split()
-
                 for vertex in vertices:
                     validate_vertex(vertex)
                     graph_sets.setdefault(vertex, set())
 
                 continue
 
-            # Edge declaration, supports: v1 v2 or v1-v2 for edge between v1 and v2
+            # edge declaration, supports: v1 v2 or v1-v2 for edge between v1 and v2
             edge_line = line.replace("-", " ")
             parts = edge_line.split()
 
@@ -139,7 +167,6 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
     graph = {}
 
     for vertex in sorted(graph_sets, key=vertex_number):
-
         graph[vertex] = sorted(
             graph_sets[vertex],
             key=vertex_number
@@ -147,16 +174,17 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
 
     return graph
 
-"""
-for initial vertex v1 returning to it can never be part of a 
-valid Hamiltonian path, so those return edges are removed.
-"""
+# build routed graph
 def build_routed_graph(
         graph: Dict[str, List[str]]
 ) -> Dict[str, List[str]]:
 
     routed_graph = {}
 
+    """
+    for initial vertex v1 returning to it can never be part of a 
+    valid Hamiltonian path, so those return edges are removed.
+    """
     for vertex, neighbors in graph.items():
         if vertex != "v1":
             routed_graph[vertex] = [
@@ -417,8 +445,7 @@ def generate_dynamic_hamiltonian_smv(
         "\n  )"
     )
 
-
-    # when we reach a dead end and we stay in it - fail
+    # when we reach a dead-end, and we stay in it - fail
     conditions = [
         "pos = dead",
         "next(direction) = direction",
@@ -561,7 +588,7 @@ def generate_dynamic_hamiltonian_smv(
         """
         2 or more neighbors -> binary splitter chain
         
-        Example degree 3 for v1 -> v2, v3, v4:
+        Example of v1 with degree 3: (v1 -> v2, v3, v4):
         v1
          down -> neighbor 1
          diag -> v1_s1
@@ -618,14 +645,12 @@ def generate_dynamic_hamiltonian_smv(
     smv += "-- Hamiltonian Path specifications\n"
 
     smv += (
-        "CTLSPEC NAME exists_hamiltonian_path := "
-        "EF(done)\n"
+        "CTLSPEC NAME exists_hamiltonian_path := EF(done)\n"
     )
 
     # Used to display a Hamiltonian path as a counterexample when one exists.
     smv += (
-        "CTLSPEC NAME no_hamiltonian_path := "
-        "AG(!done)\n"
+        "--CTLSPEC NAME no_hamiltonian_path := AG(!done)\n"
     )
 
     # save generated SMV model
