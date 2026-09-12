@@ -94,7 +94,7 @@ if __name__ == "__main__":
         if v not in G[u]: G[u].append(v)
         if u not in G[v]: G[v].append(u)
 
-    # generate and save
+    # generate and save the corresponding SMV file
     final_code = generate_tagging_smv(G)
     file_name = "auto_generated_tagging_nbc.smv"
     
