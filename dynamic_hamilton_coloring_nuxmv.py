@@ -1,7 +1,92 @@
+import os
+import re
 import sys
+import argparse
 import subprocess
+from typing import Dict, List
 
-def generate_tagging_smv(graph):
+# verifies that a vertex name has the valid format 
+def validate_vertex(vertex: str) -> None:
+    if not re.fullmatch(r"v[1-9][0-9]*", vertex):
+        raise ValueError(
+            f"Invalid vertex name '{vertex}'. "
+            "Vertices must use the format v1, v2, v3, ..."
+        )
+
+# converts a vertex name to its corresponding integer 
+def vertex_number(vertex: str) -> int:
+    return int(vertex[1:])
+
+# read graph from file
+def read_graph(file_path: str) -> Dict[str, List[str]]:
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(
+            f"Graph file '{file_path}' was not found."
+        )
+
+    graph_sets = {}
+    with open(file_path, "r", encoding="utf-8") as file:
+        for line_number, line in enumerate(file, start=1):
+            line = line.strip()
+            # ignore empty lines and comments
+            if not line:
+                continue
+            if line.startswith("#") or line.startswith("--"):
+                continue
+            # remove inline comments
+            if "#" in line:
+                line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+
+            # optional vertices declaration, for example: vertices: v1 v2 v3 v4
+            if line.lower().startswith("vertices:"):
+                vertex_text = line.split(":", 1)[1]
+                vertices = vertex_text.replace(",", " ").split()
+                for vertex in vertices:
+                    validate_vertex(vertex)
+                    graph_sets.setdefault(vertex, set())
+                continue
+
+            # edge declaration, supports: v1 v2 or v1-v2 for edge between v1 and v2
+            edge_line = line.replace("-", " ")
+            parts = edge_line.split()
+
+            if len(parts) != 2:
+                raise ValueError(
+                    f"Invalid graph format on line {line_number}: "
+                    f"'{line}'\n"
+                    "Expected an edge such as 'v1 v2'."
+                )
+
+            u, v = parts
+
+            validate_vertex(u)
+            validate_vertex(v)
+
+            graph_sets.setdefault(u, set())
+            graph_sets.setdefault(v, set())
+
+            # undirected input graph
+            graph_sets[u].add(v)
+            graph_sets[v].add(u)
+
+    if not graph_sets:
+        raise ValueError(
+            "The graph file does not contain any vertices."
+        )
+
+    graph = {}
+    for vertex in sorted(graph_sets, key=vertex_number):
+        graph[vertex] = sorted(
+            graph_sets[vertex],
+            key=vertex_number
+        )
+
+    return graph
+
+
+def generate_tagging_smv(graph: Dict[str, List[str]]) -> str:
     """
     generates an SMV file for finding a Hamiltonian path using the tagging approach.
     graph - a dictionary representing the adjacency list of an undirected graph.
@@ -45,11 +130,15 @@ def generate_tagging_smv(graph):
     smv += f"    step = {max_step} : curr_node;\n"
 
     # loop creates tne next possible moves of the agent from it's current position
-    for node in sorted(graph.keys()):
+    for node in sorted(graph.keys(), key=vertex_number):
         numeric_node = int(node.replace('v', ''))
         numeric_neighbors = sorted([int(neighbor.replace('v', '')) for neighbor in graph[node]])
-        neighbors_str = ", ".join(map(str, numeric_neighbors))
         
+        # handle isolated nodes
+        if not numeric_neighbors:
+            continue
+            
+        neighbors_str = ", ".join(map(str, numeric_neighbors))
         smv += f"    curr_node = {numeric_node} : {{{neighbors_str}}};\n"
         
     smv += "    TRUE : curr_node;\n  esac;\n\n"
@@ -69,45 +158,49 @@ def generate_tagging_smv(graph):
 
 
 if __name__ == "__main__":
-    # check if arguments were provided in command line
-    if len(sys.argv) < 2:
-        print("Usage: python generate_smv.py <edge1> <edge2> ...")
-        print("Example: python generate_smv.py v1-v2 v1-v3 v1-v4 v2-v3 v3-v4")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Hamiltonian Path Tagging (Coloring) model generator and verifier for nuXmv."
+    )
+    
+    parser.add_argument(
+        "graph_file",
+        help="Path to the graph input txt file."
+    )
+    
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="auto_generated_tagging_nbc.smv",
+        help="Optional path for the generated SMV file."
+    )
+    
+    args = parser.parse_args()
 
-    # building the graph dictionary from command line arguments
-    G = {}
-    edges = sys.argv[1:]
-    
-    for edge in edges:
-        if '-' not in edge:
-            print(f"Error: Invalid edge format '{edge}'. Please use 'vX-vY' format.")
-            sys.exit(1)
-            
-        u, v = edge.split('-')
-        
-        # initialize nodes if they don't exist and makes sure that every vertex has a list
-        if u not in G: G[u] = []
-        if v not in G: G[v] = []
-        
-        # add undirected connections (avoid duplicates)
-        if v not in G[u]: G[u].append(v)
-        if u not in G[v]: G[v].append(u)
-
-    # generate and save the corresponding SMV file
-    final_code = generate_tagging_smv(G)
-    file_name = "auto_generated_tagging_nbc.smv"
-    
-    with open(file_name, "w") as f:
-        f.write(final_code)
-        
-    print(f"Success! Generated SMV for graph with {len(G)} nodes.")
-    print(f"Saved to '{file_name}'.")
-    print("-" * 40)
-    print("Running nuXmv automatically...\n")
-    
-    # automatically execute nuXmv on the generated file
     try:
-        subprocess.run(["nuXmv", file_name])
-    except FileNotFoundError:
-        print("Error: nuXmv command not found. Please ensure it is added to your system PATH.")
+        # reading the graph from the input txt file
+        graph = read_graph(args.graph_file)
+        
+        print("\n--- Original Graph Input ---")
+        for vertex, neighbors in graph.items():
+            print(f"{vertex}: {', '.join(neighbors) if neighbors else 'no neighbors'}")
+
+        # creates the SMV file
+        final_code = generate_tagging_smv(graph)
+        output_path = os.path.abspath(args.output)
+        
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(final_code)
+            
+        print("\n--- Model Generation ---")
+        print(f"Success! Generated SMV for graph with {len(graph)} nodes.")
+        print(f"Saved to '{output_path}'.")
+        print("-" * 50)
+        print("Running nuXmv automatically...")
+        print("-" * 50)
+        
+        # execute nuXmv on the generated SMV file
+        subprocess.run(["nuXmv", output_path])
+        
+    except (ValueError, FileNotFoundError) as e:
+        print(f"\nError: {e}")
+        sys.exit(1)
