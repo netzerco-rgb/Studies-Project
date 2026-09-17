@@ -177,7 +177,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        # reading the graph from the input txt file
+        # building the graph dictionary from the input txt file
         graph = read_graph(args.graph_file)
         
         print("\n--- Original Graph Input ---")
