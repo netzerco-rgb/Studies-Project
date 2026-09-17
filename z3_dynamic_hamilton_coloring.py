@@ -1,5 +1,90 @@
+import os
+import re
 import sys
+import argparse
+from typing import Dict, List
 from z3 import *
+
+# verifies that a vertex name has the  valid format
+def validate_vertex(vertex: str) -> None:
+    if not re.fullmatch(r"v[1-9][0-9]*", vertex):
+        raise ValueError(
+            f"Invalid vertex name '{vertex}'. "
+            "Vertices must use the format v1, v2, v3, ..."
+        )
+
+# converts a vertex name to its corresponding integer
+def vertex_number(vertex: str) -> int:
+    return int(vertex[1:])
+
+# read graph from file
+def read_graph(file_path: str) -> Dict[str, List[str]]:
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(
+            f"Graph file '{file_path}' was not found."
+        )
+
+    graph_sets = {}
+    with open(file_path, "r", encoding="utf-8") as file:
+        for line_number, line in enumerate(file, start=1):
+            line = line.strip()
+            # ignore empty lines and comments
+            if not line:
+                continue
+            if line.startswith("#") or line.startswith("--"):
+                continue
+            # remove inline comments
+            if "#" in line:
+                line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+
+            # optional vertices declaration, for example: vertices: v1 v2 v3 v4
+            if line.lower().startswith("vertices:"):
+                vertex_text = line.split(":", 1)[1]
+                vertices = vertex_text.replace(",", " ").split()
+                for vertex in vertices:
+                    validate_vertex(vertex)
+                    graph_sets.setdefault(vertex, set())
+                continue
+
+            # edge declaration, supports: v1 v2 or v1-v2 for edge between v1 and v2
+            edge_line = line.replace("-", " ")
+            parts = edge_line.split()
+
+            if len(parts) != 2:
+                raise ValueError(
+                    f"Invalid graph format on line {line_number}: "
+                    f"'{line}'\n"
+                    "Expected an edge such as 'v1 v2'."
+                )
+
+            u, v = parts
+
+            validate_vertex(u)
+            validate_vertex(v)
+
+            graph_sets.setdefault(u, set())
+            graph_sets.setdefault(v, set())
+
+            # undirected input graph
+            graph_sets[u].add(v)
+            graph_sets[v].add(u)
+
+    if not graph_sets:
+        raise ValueError(
+            "The graph file does not contain any vertices."
+        )
+
+    graph = {}
+    for vertex in sorted(graph_sets, key=vertex_number):
+        graph[vertex] = sorted(
+            graph_sets[vertex],
+            key=vertex_number
+        )
+
+    return graph
+
 
 def find_hamiltonian_path_z3(graph):
     """
@@ -11,7 +96,7 @@ def find_hamiltonian_path_z3(graph):
     
     solver = Solver()
     
-     # create integer variables for each step in the path
+    # create integer variables for each step in the path
     path = [Int(f"step_{i}") for i in range(num_nodes)]
     
     # constraint 1 - every step must be a valid node from the graph
@@ -35,48 +120,43 @@ def find_hamiltonian_path_z3(graph):
         
     return solver, path
 
+
 if __name__ == "__main__":
-    # check if arguments were provided in the command line
-    if len(sys.argv) < 2:
-        print("Usage: python z3_hamiltonian.py <edge1> <edge2> ...")
-        print("Example: python z3_hamiltonian.py v1-v2 v1-v3 v1-v4 v2-v3 v3-v4")
+    parser = argparse.ArgumentParser(
+        description="Hamiltonian Path finder using Z3 SMT solver."
+    )
+    
+    parser.add_argument(
+        "graph_file",
+        help="Path to the graph input txt file."
+    )
+    
+    args = parser.parse_args()
+
+    try:
+        # building the graph dictionary from the input txt file
+        G = read_graph(args.graph_file)
+        
+        print(f"[*] Analyzing graph with {len(G)} nodes using Z3...")
+        
+        # initialize the Z3 model
+        solver, path_vars = find_hamiltonian_path_z3(G)
+        
+        # check satisfiability of the constraints
+        result = solver.check()
+        
+        if result == sat:
+            m = solver.model()
+            # extract the assigned values for each step from the Z3 model
+            path_sequence = [str(m[path_vars[i]]) for i in range(len(G))]
+            formatted_path = " -> ".join([f"v{node}" for node in path_sequence])
+            print("\n[+] Hamiltonian Path Found!")
+            print(f"    Path: {formatted_path}")
+        elif result == unsat:
+            print("\n[-] No Hamiltonian path exists in this graph.")
+        else:
+            print("\n[!] Solver failed to decide (unknown).")
+
+    except (ValueError, FileNotFoundError) as e:
+        print(f"\nError: {e}")
         sys.exit(1)
-
-    # building the graph dictionary from command line arguments
-    G = {}
-    edges = sys.argv[1:]
-    
-    for edge in edges:
-        if '-' not in edge:
-            print(f"Error: Invalid edge format '{edge}'. Please use 'vX-vY' format.")
-            sys.exit(1)
-            
-        u, v = edge.split('-')
-        
-        # initialize nodes if they don't exist and make sure that every vertex has a list
-        if u not in G: G[u] = []
-        if v not in G: G[v] = []
-        
-        # adding undirected connections (avoid duplicates)
-        if v not in G[u]: G[u].append(v)
-        if u not in G[v]: G[v].append(u)
-
-    print(f"[*] Analyzing graph with {len(G)} nodes using Z3...")
-    
-    # initialize the Z3 model
-    solver, path_vars = find_hamiltonian_path_z3(G)
-    
-    # check satisfiability of the constraints
-    result = solver.check()
-    
-    if result == sat:
-        m = solver.model()
-        # extract the assigned values for each step from the Z3 model
-        path_sequence = [str(m[path_vars[i]]) for i in range(len(G))]
-        formatted_path = " -> ".join([f"v{node}" for node in path_sequence])
-        print("\n[+] Hamiltonian Path Found!")
-        print(f"    Path: {formatted_path}")
-    elif result == unsat:
-        print("\n[-] No Hamiltonian path exists in this graph.")
-    else:
-        print("\n[!] Solver failed to decide (unknown).")
