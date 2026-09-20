@@ -95,13 +95,6 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
             "The graph file does not contain any vertices."
         )
 
-    # v1 is always the starting vertex
-    if "v1" not in graph_sets:
-        raise ValueError(
-            "The graph must contain v1 because "
-            "v1 is the fixed starting vertex."
-        )
-
     graph = {}
 
     for vertex in sorted(graph_sets, key=vertex_number):
@@ -114,29 +107,26 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
 
 # build routed graph
 def build_routed_graph(
-        graph: Dict[str, List[str]]
+        graph: Dict[str, List[str]],
+        start_vertex: str
 ) -> Dict[str, List[str]]:
 
     routed_graph = {}
 
     """
-    for initial vertex v1 returning to it can never be part of a 
-    valid Hamiltonian path, so those return edges are removed.
+    returning to the chosen initial vertex is not permitted, so these edges are removed.
     """
     for vertex, neighbors in graph.items():
-        if vertex != "v1":
+        if vertex != start_vertex:
             routed_graph[vertex] = [
                 neighbor
                 for neighbor in neighbors
-                if neighbor != "v1"
+                if neighbor != start_vertex
             ]
-
         else:
             routed_graph[vertex] = list(neighbors)
 
     return routed_graph
-
-
 
 # Build intermediate splitters -> mid_pos
 def build_mid_positions(
@@ -182,9 +172,9 @@ def route_cost(degree: int) -> int:
 
 # Z3 verification
 def verify_hamiltonian_path_z3(
-
-        graph: Dict[str, List[str]]
-) -> None:
+        graph: Dict[str, List[str]],
+        start_vertex: str
+) -> dict:
 
     nodes = sorted(
         graph.keys(),
@@ -198,7 +188,10 @@ def verify_hamiltonian_path_z3(
 
     num_nodes = len(nodes)
 
-    routed_graph = build_routed_graph(graph)
+    routed_graph = build_routed_graph(
+        graph,
+        start_vertex
+    )
 
     mid_names, mid_codes = build_mid_positions(
         nodes,
@@ -282,7 +275,7 @@ def verify_hamiltonian_path_z3(
 
     # Initial state
     solver.add(
-        pos[0] == 1
+        pos[0] == vertex_number(start_vertex)
     )
 
     solver.add(
@@ -297,10 +290,10 @@ def verify_hamiltonian_path_z3(
         direction[0] == DOWN
     )
 
-# sets only v1 as visited, the rest are not in the initial state [0]
+# sets only the chosen starting vertex as visited, the rest are not in the initial state [0]
     for node in nodes:
         number = vertex_number(node)
-        if node == "v1":
+        if node == start_vertex:
             solver.add(
                 visited[number][0]
             )
@@ -349,7 +342,6 @@ def verify_hamiltonian_path_z3(
                     visited[number][t]
                 )
         return updates
-
 
     # Transition relation
     for t in range(num_states - 1):
@@ -585,7 +577,7 @@ def verify_hamiltonian_path_z3(
     )
 
     print(
-        "Starting vertex: v1"
+        f"Starting vertex: {start_vertex}"
     )
 
     # Performance Metrics
@@ -718,19 +710,34 @@ def verify_hamiltonian_path_z3(
     else:
         print("\nResult: UNSAT")
         print(
-            "No Hamiltonian Path starting from v1 exists."
+            f"No Hamiltonian Path starting from {start_vertex} exists."
         )
     print("\n--- Performance Metrics ---")
     print(f"Execution Time: {end_time - start_time:.4f} seconds")
     print(f"Max Memory Usage (Z3): {peak_memory_kb:.2f} KB")
 
+    return {
+        "found": result == sat,
+        "execution_time": end_time - start_time,
+        "peak_memory_kb": peak_memory_kb
+    }
 
+def ordered_start_vertices(
+        graph: Dict[str, List[str]]
+) -> List[str]:
+    return sorted(
+        graph.keys(),
+        key=vertex_number
+    )
+
+# MAIN
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=(
             "Dynamic tree-routed Hamiltonian Path "
             "verifier using Z3. "
-            "The path always starts from v1."
+            "The program tries each vertex as a starting vertex, "
+            "starting from v1 if it exists."
         )
     )
 
@@ -752,9 +759,68 @@ if __name__ == "__main__":
                 f"{vertex}: "
                 f"{', '.join(neighbors) if neighbors else 'no neighbors'}"
             )
-        verify_hamiltonian_path_z3(
-            graph
-        )
+        start_vertices = ordered_start_vertices(graph)
+
+        found_path = False
+        successful_start_vertex = None
+        successful_output = None
+
+        from contextlib import redirect_stdout
+        import io
+
+        total_execution_time = 0.0
+        max_memory_kb = 0.0
+
+        print("\nSearching for a Hamiltonian Path using Z3...")
+
+        for start_vertex in start_vertices:
+
+            output_buffer = io.StringIO()
+
+            with redirect_stdout(output_buffer):
+                z3_result = verify_hamiltonian_path_z3(
+                    graph,
+                    start_vertex
+                )
+
+            current_output = output_buffer.getvalue()
+
+            total_execution_time += z3_result["execution_time"]
+            max_memory_kb = max(
+                max_memory_kb,
+                z3_result["peak_memory_kb"]
+            )
+
+            if z3_result["found"]:
+                found_path = True
+                successful_start_vertex = start_vertex
+                successful_output = current_output
+                break
+
+        if found_path:
+            print("\n" + "*" * 60)
+            print(
+                f"Hamiltonian Path was found starting from "
+                f"{successful_start_vertex}."
+            )
+            print("*" * 60)
+
+            print(successful_output)
+
+        else:
+            print("\n" + "*" * 60)
+            print("No Hamiltonian Path was found from any starting vertex.")
+            print("*" * 60)
+
+            print("\n--- Performance Metrics ---")
+            print(
+                f"Execution Time: "
+                f"{total_execution_time:.4f} seconds"
+            )
+            print(
+                f"Max Memory Usage (Z3): "
+                f"{max_memory_kb:.2f} KB"
+            )
 
     except (
         ValueError,
