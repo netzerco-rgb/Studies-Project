@@ -1,0 +1,54 @@
+MODULE main
+
+VAR
+  _row : 0..14;
+  _column : 0..14;
+  direction : {down, diag};
+  junction_type : {split, pass};
+
+DEFINE
+  max_sum := 14;
+  is_split_row := (_row = 3) | (_row = 7) | (_row = 14);
+  
+  _sum := (_column=0) | (_column=3) | (_column=4) | (_column=7) | (_column=10) | (_column=11) | (_column=14);
+  _xsum := (_column=1) | (_column=2) | (_column=5) | (_column=6) | (_column=8) | (_column=9) | (_column=12) | (_column=13);
+
+ASSIGN
+  init(_row) := 0;
+  init(_column) := 0;
+  init(direction) := down;
+  init(junction_type) := split;
+
+  next(_row) := 
+    case
+      _row = max_sum : 0;
+      TRUE : _row + 1;
+    esac;
+
+  next(direction) :=
+    case
+      _row = max_sum : down;
+      junction_type = split : {down, diag};
+      junction_type = pass  : direction;
+      TRUE : direction;
+    esac;
+
+  next(_column) :=
+    case
+      _row = max_sum : 0;
+      junction_type = split & next(direction) = down : _column;
+      junction_type = split & next(direction) = diag : (_column < max_sum ? _column + 1 : 0);
+      junction_type = pass & direction = down : _column;
+      junction_type = pass & direction = diag : (_column < max_sum ? _column + 1 : 0);
+      TRUE : _column;
+    esac;
+
+  next(junction_type) :=
+    case
+      _row = max_sum : split;
+      next(is_split_row) : split;
+      TRUE    : pass;
+    esac;
+
+-- Specifications
+CTLSPEC NAME alway_right_path := AG ((_row=max_sum) -> (_sum & !_xsum));
