@@ -672,7 +672,7 @@ def generate_dynamic_hamiltonian_smv(
 
     # Used to display a Hamiltonian path as a counterexample when one exists.
     smv += (
-        "--CTLSPEC NAME no_hamiltonian_path := AG(!done)\n"
+        "CTLSPEC NAME no_hamiltonian_path := AG(!done)\n"
     )
 
     # save generated SMV model
