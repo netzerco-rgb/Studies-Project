@@ -349,4 +349,4 @@ TRANS
 
 -- Hamiltonian Path specifications
 CTLSPEC NAME exists_hamiltonian_path := EF(done)
---CTLSPEC NAME no_hamiltonian_path := AG(!done)
+CTLSPEC NAME no_hamiltonian_path := AG(!done)
