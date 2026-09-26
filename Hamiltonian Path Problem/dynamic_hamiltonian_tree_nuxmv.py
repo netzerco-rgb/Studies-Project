@@ -27,39 +27,44 @@ def run_nuxmv(
         smv_file_path: str,
         print_output: bool = False
 ) -> dict:
-    # command to execute nuXmv in the command line
     command = ["nuXmv", smv_file_path]
+
+    output_file = smv_file_path + ".out"
+    error_file = smv_file_path + ".err"
 
     try:
         start_time = time.perf_counter()
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
 
-        ps_process = psutil.Process(process.pid)
-        peak_memory_kb = 0
+        with open(output_file, "w", encoding="utf-8") as out, \
+             open(error_file, "w", encoding="utf-8") as err:
 
-        while process.poll() is None:
-            try:
-                memory_kb = (
-                    ps_process.memory_info().rss / 1024
-                )
-                peak_memory_kb = max(
-                    peak_memory_kb,
-                    memory_kb
-                )
-            except psutil.NoSuchProcess:
-                break
+            process = subprocess.Popen(
+                command,
+                stdout=out,
+                stderr=err,
+                text=True
+            )
 
-            time.sleep(0.01)
+            ps_process = psutil.Process(process.pid)
+            peak_memory_kb = 0
 
-        stdout, stderr = process.communicate()
+            while process.poll() is None:
+                try:
+                    memory_kb = ps_process.memory_info().rss / 1024
+                    peak_memory_kb = max(peak_memory_kb, memory_kb)
+                except psutil.NoSuchProcess:
+                    break
+
+                time.sleep(0.01)
+
         end_time = time.perf_counter()
-
         execution_time = end_time - start_time
+
+        with open(output_file, "r", encoding="utf-8", errors="ignore") as out:
+            stdout = out.read()
+
+        with open(error_file, "r", encoding="utf-8", errors="ignore") as err:
+            stderr = err.read()
 
         if process.returncode != 0:
             print(f"Error executing nuXmv. Exit code: {process.returncode}")
@@ -79,9 +84,7 @@ def run_nuxmv(
         return result
 
     except FileNotFoundError:
-        print(
-            "Error: 'nuXmv' executable not found. "
-        )
+        print("Error: 'nuXmv' executable not found.")
         sys.exit(1)
 
 def print_nuxmv_result(result: dict) -> None:
