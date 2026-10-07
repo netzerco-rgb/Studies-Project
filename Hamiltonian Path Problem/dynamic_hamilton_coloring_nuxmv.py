@@ -90,7 +90,7 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
 
 def generate_tagging_smv(graph):
     """
-    Generates an SMV file for finding a Hamiltonian path using the tagging approach.
+    generates an SMV file for finding a Hamiltonian path using the tagging approach.
     graph - a dictionary representing the adjacency list of an undirected graph.
     """
     num_nodes = len(graph)
