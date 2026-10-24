@@ -3,9 +3,62 @@ import re
 import sys
 import argparse
 import time
+import threading
 import psutil
 from typing import Dict, List
 from z3 import *
+
+# Performance monitoring - 1ms sampling
+def start_memory_monitor():
+    python_process = psutil.Process(os.getpid())
+    child_process = [None]
+    peak_memory_kb = [0.0]
+    stop_event = threading.Event()
+
+    def sample_memory():
+        total_bytes = 0
+
+        try:
+            total_bytes += python_process.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        if child_process[0] is not None:
+            try:
+                total_bytes += child_process[0].memory_info().rss
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        peak_memory_kb[0] = max(
+            peak_memory_kb[0],
+            total_bytes / 1024
+        )
+
+    def monitor():
+        while not stop_event.is_set():
+            sample_memory()
+            stop_event.wait(0.001)
+
+    start_time = time.perf_counter()
+    sample_memory()
+
+    thread = threading.Thread(
+        target=monitor,
+        daemon=True
+    )
+    thread.start()
+
+    def stop_monitor():
+        stop_event.set()
+        thread.join()
+        sample_memory()
+        return (
+            time.perf_counter() - start_time,
+            peak_memory_kb[0]
+        )
+
+    return child_process, stop_monitor
+
 
 # verifies that a vertex name has the  valid format
 def validate_vertex(vertex: str) -> None:
@@ -15,9 +68,11 @@ def validate_vertex(vertex: str) -> None:
             "Vertices must use the format v1, v2, v3, ..."
         )
 
+
 # converts a vertex name to its corresponding integer
 def vertex_number(vertex: str) -> int:
     return int(vertex[1:])
+
 
 # read graph from file
 def read_graph(file_path: str) -> Dict[str, List[str]]:
@@ -95,19 +150,19 @@ def find_hamiltonian_path_z3(graph):
     """
     nodes = sorted([int(n.replace('v', '')) for n in graph.keys()])
     num_nodes = len(nodes)
-    
+
     solver = Solver()
-    
+
     # create integer variables for each step in the path
     path = [Int(f"step_{i}") for i in range(num_nodes)]
-    
+
     # constraint 1 - every step must be a valid node from the graph
     for p in path:
         solver.add(Or([p == n for n in nodes]))
-        
+
     # constraint 2 - all nodes in the path must be distinct (visit every node exactly once)
     solver.add(Distinct(*path))
-    
+
     # constraint 3 - valid transitions according to the graph topology (edges)
     for i in range(num_nodes - 1):
         valid_transitions = []
@@ -116,10 +171,10 @@ def find_hamiltonian_path_z3(graph):
             for v in graph[u]:
                 numeric_v = int(v.replace('v', ''))
                 # if step i is node u, step i+1 must be a neighboring node v
-                valid_transitions.append(And(path[i] == numeric_u, path[i+1] == numeric_v))
-        
+                valid_transitions.append(And(path[i] == numeric_u, path[i + 1] == numeric_v))
+
         solver.add(Or(valid_transitions))
-        
+
     return solver, path
 
 
@@ -127,37 +182,29 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Hamiltonian Path finder using Z3 SMT solver with Performance Metrics."
     )
-    
+
     parser.add_argument(
         "graph_file",
         help="Path to the graph input txt file."
     )
-    
+
     args = parser.parse_args()
+
+    # Start total execution time and memory monitoring
+    child_process, stop_monitor = start_memory_monitor()
 
     try:
         # building the graph dictionary from the input txt file
         G = read_graph(args.graph_file)
-        
+
         print(f"[*] Analyzing graph with {len(G)} nodes using Z3...")
-        
+
         # initialize the Z3 model
         solver, path_vars = find_hamiltonian_path_z3(G)
-        
-        # execution mechanism and accurate performance measurement for Z3
-        z3_start_time = time.perf_counter()
-        
-        # check satisfiability of the constraints
+
+        # Check satisfiability of the constraints
         result = solver.check()
-        
-        z3_end_time = time.perf_counter()
-        
-        # getting memory consumption of the current Python process running Z3 directly
-        p = psutil.Process()
-        mem_info = p.memory_info()
-        # pulling the most accurate data from Windows, or using the standard data on other systems
-        max_mem_bytes = getattr(mem_info, 'peak_wset', mem_info.rss)
-        
+
         if result == sat:
             m = solver.model()
             # extracting the assigned values for each step from the Z3 model
@@ -170,9 +217,11 @@ if __name__ == "__main__":
         else:
             print("\n[!] Solver failed to decide (unknown).")
 
+        # printing the performance report
+        total_runtime, max_memory_usage_kb = stop_monitor()
         print("\n--- Performance Metrics ---")
-        print(f"Execution Time: {z3_end_time - z3_start_time:.4f} seconds")
-        print(f"Max Memory Usage (Z3): {max_mem_bytes / 1024:.2f} KB")
+        print(f"Total Execution Time: {total_runtime:.4f} seconds")
+        print(f"Max Memory Usage (Python + Z3): {max_memory_usage_kb:.2f} KB")
 
     except (ValueError, FileNotFoundError) as e:
         print(f"\nError: {e}")
