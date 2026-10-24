@@ -3,6 +3,8 @@ import re
 import sys
 import argparse
 import time
+import threading
+import psutil
 from typing import Dict, List, Tuple
 
 from z3 import (
@@ -23,6 +25,57 @@ DIAG = 1
 DEAD = 0
 MID_NONE = 0
 
+
+# Performance monitoring - 1ms sampling
+def start_memory_monitor():
+    python_process = psutil.Process(os.getpid())
+    child_process = [None]
+    peak_memory_kb = [0.0]
+    stop_event = threading.Event()
+
+    def sample_memory():
+        total_bytes = 0
+
+        try:
+            total_bytes += python_process.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        if child_process[0] is not None:
+            try:
+                total_bytes += child_process[0].memory_info().rss
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        peak_memory_kb[0] = max(
+            peak_memory_kb[0],
+            total_bytes / 1024
+        )
+
+    def monitor():
+        while not stop_event.is_set():
+            sample_memory()
+            stop_event.wait(0.001)
+
+    start_time = time.perf_counter()
+    sample_memory()
+
+    thread = threading.Thread(
+        target=monitor,
+        daemon=True
+    )
+    thread.start()
+
+    def stop_monitor():
+        stop_event.set()
+        thread.join()
+        sample_memory()
+        return (
+            time.perf_counter() - start_time,
+            peak_memory_kb[0]
+        )
+
+    return child_process, stop_monitor
 
 # verifies that a vertex name has the format v<number>, for example: v1, v2, v10.
 def validate_vertex(vertex: str) -> None:
@@ -580,25 +633,14 @@ def verify_hamiltonian_path_z3(
         f"Starting vertex: {start_vertex}"
     )
 
-    # Performance Metrics
-    start_time = time.perf_counter()
+    # Run Z3 solver
     result = solver.check()
-    end_time = time.perf_counter()
-    stats = solver.statistics()
-    try:
-        peak_memory_mb = stats.get_key_value("max memory")
-    except:
-        peak_memory_mb = stats.get_key_value("memory")
-    peak_memory_kb = peak_memory_mb * 1024
-
 
     # SAT - Hamiltonian Path exists
     if result == sat:
         model = solver.model()
         print("\nResult: SAT")
-        print(
-            "Hamiltonian Path exists."
-        )
+        print("Hamiltonian Path Found!")
 
         hamiltonian_path = []
         routed_trace = []
@@ -680,7 +722,7 @@ def verify_hamiltonian_path_z3(
                 break
 
         print(
-            "\nHamiltonian Path: "
+            "\nPath: "
             + " -> ".join(
                 hamiltonian_path
             )
@@ -712,14 +754,9 @@ def verify_hamiltonian_path_z3(
         print(
             f"No Hamiltonian Path starting from {start_vertex} exists."
         )
-    print("\n--- Performance Metrics ---")
-    print(f"Execution Time: {end_time - start_time:.4f} seconds")
-    print(f"Max Memory Usage (Z3): {peak_memory_kb:.2f} KB")
 
     return {
-        "found": result == sat,
-        "execution_time": end_time - start_time,
-        "peak_memory_kb": peak_memory_kb
+        "found": result == sat
     }
 
 def ordered_start_vertices(
@@ -747,6 +784,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    # Start total execution time and memory monitoring
+    child_process, stop_monitor = start_memory_monitor()
+
     try:
         graph = read_graph(
             args.graph_file
@@ -768,9 +809,6 @@ if __name__ == "__main__":
         from contextlib import redirect_stdout
         import io
 
-        total_execution_time = 0.0
-        max_memory_kb = 0.0
-
         print("\nSearching for a Hamiltonian Path using Z3...")
 
         for start_vertex in start_vertices:
@@ -785,11 +823,6 @@ if __name__ == "__main__":
 
             current_output = output_buffer.getvalue()
 
-            total_execution_time += z3_result["execution_time"]
-            max_memory_kb = max(
-                max_memory_kb,
-                z3_result["peak_memory_kb"]
-            )
 
             if z3_result["found"]:
                 found_path = True
@@ -812,15 +845,11 @@ if __name__ == "__main__":
             print("No Hamiltonian Path was found from any starting vertex.")
             print("*" * 60)
 
-            print("\n--- Performance Metrics ---")
-            print(
-                f"Execution Time: "
-                f"{total_execution_time:.4f} seconds"
-            )
-            print(
-                f"Max Memory Usage (Z3): "
-                f"{max_memory_kb:.2f} KB"
-            )
+        # printing the performance report
+        total_runtime, max_memory_usage_kb = stop_monitor()
+        print("\n--- Performance Metrics ---")
+        print(f"Total Execution Time: {total_runtime:.4f} seconds")
+        print(f"Max Memory Usage (Python + Z3): {max_memory_usage_kb:.2f} KB")
 
     except (
         ValueError,
