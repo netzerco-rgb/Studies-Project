@@ -4,28 +4,68 @@ import sys
 import argparse
 import subprocess
 import time
+import threading
 import psutil
 from typing import Dict, List
 
-"""
-Reads an undirected graph from "graph.text" file, using the following format:
 
-    vertices: v1 v2 v3 v4
+# performance monitoring - 1ms sampling
+def start_memory_monitor():
+    python_process = psutil.Process(os.getpid())
+    child_process = [None]
+    peak_memory_kb = [0.0]
+    stop_event = threading.Event()
 
-    v1 v2
-    v1 v3
-    v1 v4
-    v2 v3
-    v3 v4
+    def sample_memory():
+        total_bytes = 0
 
-The vertices line is optional, but recommended because it
-allows isolated vertices to be included in the graph.
-"""
+        try:
+            total_bytes += python_process.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        if child_process[0] is not None:
+            try:
+                total_bytes += child_process[0].memory_info().rss
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        peak_memory_kb[0] = max(
+            peak_memory_kb[0],
+            total_bytes / 1024
+        )
+
+    def monitor():
+        while not stop_event.is_set():
+            sample_memory()
+            stop_event.wait(0.001)
+
+    start_time = time.perf_counter()
+    sample_memory()
+
+    thread = threading.Thread(
+        target=monitor,
+        daemon=True
+    )
+    thread.start()
+
+    def stop_monitor():
+        stop_event.set()
+        thread.join()
+        sample_memory()
+        return (
+            time.perf_counter() - start_time,
+            peak_memory_kb[0]
+        )
+
+    return child_process, stop_monitor
+
 
 # by default it won't print the result unless a path is found
 def run_nuxmv(
         smv_file_path: str,
-        print_output: bool = False
+        print_output: bool = False,
+        child_process=None  # NEW
 ) -> dict:
     command = ["nuXmv", smv_file_path]
 
@@ -36,7 +76,7 @@ def run_nuxmv(
         start_time = time.perf_counter()
 
         with open(output_file, "w", encoding="utf-8") as out, \
-             open(error_file, "w", encoding="utf-8") as err:
+                open(error_file, "w", encoding="utf-8") as err:
 
             process = subprocess.Popen(
                 command,
@@ -45,17 +85,16 @@ def run_nuxmv(
                 text=True
             )
 
-            ps_process = psutil.Process(process.pid)
-            peak_memory_kb = 0
+            # include nuXmv in memory monitoring
+            if child_process is not None:
+                child_process[0] = psutil.Process(process.pid)
 
-            while process.poll() is None:
-                try:
-                    memory_kb = ps_process.memory_info().rss / 1024
-                    peak_memory_kb = max(peak_memory_kb, memory_kb)
-                except psutil.NoSuchProcess:
-                    break
+        # wait for nuXmv to finish
+        process.wait()
 
-                time.sleep(0.01)
+        # stop tracking the completed nuXmv process
+        if child_process is not None:
+            child_process[0] = None
 
         end_time = time.perf_counter()
         execution_time = end_time - start_time
@@ -74,8 +113,7 @@ def run_nuxmv(
 
         result = {
             "stdout": stdout,
-            "execution_time": execution_time,
-            "peak_memory_kb": peak_memory_kb
+            "execution_time": execution_time
         }
 
         if print_output:
@@ -87,33 +125,29 @@ def run_nuxmv(
         print("Error: 'nuXmv' executable not found.")
         sys.exit(1)
 
+
 def print_nuxmv_result(result: dict) -> None:
     print("\n--- nuXmv Execution Output ---")
     print(result["stdout"])
 
     print("\n--- Performance Metrics ---")
-    print(
-        f"Execution Time: "
-        f"{result['execution_time']:.4f} seconds"
+    print(f"Execution Time: "f"{result['execution_time']:.4f} seconds"
     )
-    print(
-        f"Max Memory Usage (nuXmv): "
-        f"{result['peak_memory_kb']:.2f} KB"
-    )
+
 
 # returns True if the nuXmv output shows that EF(done) is true
-def hamiltonian_path_found(nuxmv_output: str) -> bool:
+def ef_done_is_true(nuxmv_output: str) -> bool:
     for line in nuxmv_output.lower().splitlines():
         compact_line = " ".join(line.split())
-
         if (
-            "specification" in compact_line
-            and "done" in compact_line
-            and "is true" in compact_line
+                "specification" in compact_line
+                and " done" in compact_line
+                and "is true" in compact_line
         ):
             return True
 
     return False
+
 
 # verifies that a vertex name has the format v<number>, for example: v1, v2, v10.
 def validate_vertex(vertex: str) -> None:
@@ -123,9 +157,11 @@ def validate_vertex(vertex: str) -> None:
             "Vertices must use the format v1, v2, v3, ..."
         )
 
+
 # converts a vertex name such as v4 to the integer 4.
 def vertex_number(vertex: str) -> int:
     return int(vertex[1:])
+
 
 # read graph from file
 def read_graph(file_path: str) -> Dict[str, List[str]]:
@@ -197,6 +233,7 @@ def read_graph(file_path: str) -> Dict[str, List[str]]:
 
     return graph
 
+
 # build routed graph
 def build_routed_graph(
         graph: Dict[str, List[str]],
@@ -219,13 +256,13 @@ def build_routed_graph(
 
     return routed_graph
 
+
 # generate dynamic Hamiltonian SMV model
 def generate_dynamic_hamiltonian_smv(
         graph: Dict[str, List[str]],
         output_filename: str,
         start_vertex: str
 ) -> str:
-
     nodes = sorted(
         graph.keys(),
         key=vertex_number
@@ -268,7 +305,6 @@ def generate_dynamic_hamiltonian_smv(
     smv += "  direction : {down, diag};\n"
 
     for node in nodes:
-
         number = vertex_number(node)
 
         smv += (
@@ -303,7 +339,6 @@ def generate_dynamic_hamiltonian_smv(
             # additional splitters
             if degree > 2:
                 for i in range(1, degree - 1):
-
                     split_conditions.append(
                         f"(pos = {node} & "
                         f"mid_pos = {node}_s{i})"
@@ -344,7 +379,6 @@ def generate_dynamic_hamiltonian_smv(
         "  at_graph_vertex := "
         "mid_pos = none & pos != dead;\n\n"
     )
-
 
     # legal unvisited neighbor exists
     legal_conditions = []
@@ -612,16 +646,16 @@ def generate_dynamic_hamiltonian_smv(
 
         """
         2 or more neighbors -> binary splitter chain
-        
+
         Example of v1 with degree 3: (v1 -> v2, v3, v4):
         v1
          down -> neighbor 1
          diag -> v1_s1
-        
+
         v1_s1
          down -> neighbor 2
          diag -> neighbor 3
-        
+
         """
         for i in range(degree - 1):
             if i == 0:
@@ -664,7 +698,6 @@ def generate_dynamic_hamiltonian_smv(
 
     smv += ";\n"
 
-
     # CTL specifications
     smv += "\n"
     smv += "-- Hamiltonian Path specifications\n"
@@ -673,16 +706,16 @@ def generate_dynamic_hamiltonian_smv(
         "CTLSPEC NAME exists_hamiltonian_path := EF(done)\n"
     )
 
-    # Used to display a Hamiltonian path as a counterexample when one exists.
+    # used to display a Hamiltonian path as a counterexample when one exists.
     smv += (
         "CTLSPEC NAME no_hamiltonian_path := AG(!done)\n"
     )
 
     # save generated SMV model
     with open(
-        output_filename,
-        "w",
-        encoding="utf-8"
+            output_filename,
+            "w",
+            encoding="utf-8"
     ) as file:
 
         file.write(smv)
@@ -710,6 +743,7 @@ def generate_dynamic_hamiltonian_smv(
     print(f"Starting vertex: {start_vertex}")
     return output_filename
 
+
 #  returns the vertices in order of v1, v2, etc.
 def ordered_start_vertices(
         graph: Dict[str, List[str]]
@@ -718,6 +752,7 @@ def ordered_start_vertices(
         graph.keys(),
         key=vertex_number
     )
+
 
 # MAIN
 if __name__ == "__main__":
@@ -745,6 +780,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # start total execution time and memory monitoring
+    child_process, stop_monitor = start_memory_monitor()
+
     try:
         graph = read_graph(
             args.graph_file
@@ -769,8 +807,10 @@ if __name__ == "__main__":
         successful_result = None
         successful_output_path = None
 
+        # save the latest nuXmv result, even when no path is found
+        last_nuxmv_result = None
+
         total_execution_time = 0.0
-        max_memory_kb = 0.0
         number_of_nuxmv_runs = 0
 
         print("\nSearching for a Hamiltonian Path...")
@@ -809,25 +849,24 @@ if __name__ == "__main__":
 
             nuxmv_result = run_nuxmv(
                 output_path,
-                print_output=False
+                print_output=False,
+                child_process=child_process  # NEW
             )
 
+            # keep the last nuXmv output
+            last_nuxmv_result = nuxmv_result
             number_of_nuxmv_runs += 1
             total_execution_time += nuxmv_result["execution_time"]
-            max_memory_kb = max(
-                max_memory_kb,
-                nuxmv_result["peak_memory_kb"]
-            )
 
             nuxmv_output = nuxmv_result["stdout"]
 
-            if hamiltonian_path_found(nuxmv_output):
+            if ef_done_is_true(nuxmv_output):
                 found_path = True
                 successful_start_vertex = start_vertex
                 successful_result = nuxmv_result
                 successful_output_path = output_path
 
-                # Stop immediately after the first successful start vertex.
+                # stop immediately after the first successful start vertex.
                 break
 
         if found_path:
@@ -836,35 +875,31 @@ if __name__ == "__main__":
                 f"Hamiltonian Path was found starting from "
                 f"{successful_start_vertex}."
             )
-            print(f"Generated SMV file: {successful_output_path}")
             print("*" * 60)
 
-            print_nuxmv_result(
-                successful_result
-            )
+            print("\n--- nuXmv Execution Output ---")
+            print(successful_result["stdout"])
+
 
         else:
             print("\n" + "*" * 60)
             print("No Hamiltonian Path was found from any starting vertex.")
             print("*" * 60)
 
-            print("\n--- Performance Metrics ---")
-            print(
-                f"Number of nuXmv runs: "
-                f"{number_of_nuxmv_runs}"
-            )
-            print(
-                f"Total Execution Time: "
-                f"{total_execution_time:.4f} seconds"
-            )
-            print(
-                f"Max Memory Usage across all nuXmv runs: "
-                f"{max_memory_kb:.2f} KB"
-            )
+            # print nuXmv output even when no path is found
+            if last_nuxmv_result is not None:
+                print("\n--- nuXmv Execution Output ---")
+                print(last_nuxmv_result["stdout"])
+
+        # printing the performance report
+        total_runtime, max_memory_usage_kb = stop_monitor()
+        print("\n--- Performance Metrics ---")
+        print(f"Total Execution Time: {total_runtime:.4f} seconds")
+        print(f"Max Memory Usage (Python + nuXmv): {max_memory_usage_kb:.2f} KB")
 
     except (
-        ValueError,
-        FileNotFoundError
+            ValueError,
+            FileNotFoundError
     ) as e:
 
         print(f"\nError: {e}")
