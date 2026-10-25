@@ -1,5 +1,8 @@
 import argparse
 import sys
+import time
+import psutil
+import os
 from typing import Dict, List, Sequence, Set, Tuple
 from z3 import (
     And,
@@ -608,6 +611,9 @@ def parse_tracked_point(value: str) -> Tuple[int, int]:
 
 
 def main() -> None:
+    # 1. Start execution timer
+    start_time = time.perf_counter()
+
     parser = argparse.ArgumentParser(
         description=(
             "Dynamic Subset Sum Problem model and verifier using Z3."
@@ -687,6 +693,16 @@ def main() -> None:
     except ValueError as error:
         print(error)
         sys.exit(1)
+        
+    finally:
+        # 2. Stop timer and extract peak memory usage for Windows
+        end_time = time.perf_counter()
+        process = psutil.Process(os.getpid())
+        peak_memory_kb = process.memory_info().peak_wset / 1024
+        
+        print("\n--- Performance Metrics ---")
+        print(f"Execution Time: {end_time - start_time:.4f} seconds")
+        print(f"Max Memory Usage (Z3): {peak_memory_kb:.2f} KB")
 
 
 if __name__ == "__main__":
