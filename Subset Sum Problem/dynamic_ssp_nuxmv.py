@@ -2,73 +2,105 @@ import os
 import subprocess
 import sys
 import argparse
+import time
+import psutil  # Required for memory measurement on Windows
 from typing import List
+
+# Attempt to import the resource module for memory measurement (supported natively on Linux/macOS)
+try:
+    import resource
+except ImportError:
+    resource = None
 
 def run_nuxmv(smv_file_path: str) -> None:
     """
-    Executes the nuXmv model checker on the provided SMV file.
+    Executes nuXmv and measures Execution Time and Peak Memory Usage (Cross-platform).
     """
-    # command to execute nuXmv in the command line
     command = ['nuXmv', smv_file_path]
+    print(f"\n--- Starting nuXmv Execution for {smv_file_path} ---")
+    
+    start_time = time.perf_counter()
+    max_memory_usage = 0
     
     try:
-        result = subprocess.run(
-            command, 
-            capture_output=True, 
-            text=True, 
-            check=True
-        )
-
-        # print the standard output
+        # Launch nuXmv as a subprocess
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        # Wrap the process with psutil to monitor its resources
+        psutil_process = psutil.Process(process.pid)
+        
+        # Continuously poll the memory usage while the process is running
+        while process.poll() is None:
+            try:
+                mem_info = psutil_process.memory_info()
+                # Update max_memory_usage if the current reading is higher
+                if mem_info.rss > max_memory_usage:
+                    max_memory_usage = mem_info.rss
+            except psutil.NoSuchProcess:
+                # Process finished between loop iterations
+                break
+            
+            # Short sleep to prevent the while-loop from hogging the CPU
+            time.sleep(0.01)
+            
+        # Wait for the process to fully complete and capture output
+        stdout, stderr = process.communicate()
+        end_time = time.perf_counter()
+        
         print("\n--- nuXmv Execution Output ---")
-        print(result.stdout)
+        print(stdout)
         
-        # handle cases where nuXmv was executed and print it's original error message
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing nuXmv. Exit code: {e.returncode}")
-        print("--- Error Output ---")
-        print(e.stderr)
-        sys.exit(1)
+        print("--- Performance Metrics ---")
+        print(f"Execution Time: {end_time - start_time:.4f} seconds")
+        print(f"Max Memory Usage (nuXmv): {max_memory_usage / 1024:.2f} KB")
         
-        # handle cases where nuXmv executable is not found by the OS
+        if process.returncode != 0:
+            print(f"Error executing nuXmv. Exit code: {process.returncode}")
+            print("--- Error Output ---")
+            print(stderr)
+            sys.exit(1)
+            
     except FileNotFoundError:
         print("Error: 'nuXmv' executable not found. Verify it is added to the system's PATH.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
 
 def generate_dynamic_ssp_smv(elements: List[int], output_filename: str = "dynamic_ssp.smv") -> str:
     """
-    generates a dynamic SMV model for the subset sum problem based on a list of elements.
+    Generates a dynamic SMV model for the Subset Sum Problem (SSP) based on a given list of elements.
     """
-    # input validation: elements must be a non-empty list of positive integers
+    # Input validation: elements must be a non-empty list of positive integers
     if not elements or any(e <= 0 for e in elements):
         raise ValueError("Error: Elements must be a non-empty list of positive integers.")
 
-    # 1. calculating the maximum sum
+    # 1. Calculate the maximum possible sum (if all elements are chosen)
     max_sum = sum(elements)
     
-    # 2. calculating split rows (cumulative Sum)
-    # for example, for [3, 4, 7] this will generate [3, 7, 14]
+    # 2. Calculate the split rows (Cumulative Sums)
+    # For example, for the input [3, 4, 7], this will generate [3, 7, 14]
     splits = []
     current = 0
     for e in elements:
         current += e
         splits.append(current)
         
-    # 3.calculating all possible valid subset sums
+    # 3. Calculate all possible valid subset sums using a mathematical set
     valid_sums = {0}
     for e in elements:
         valid_sums.update({v + e for v in valid_sums})
         
-    # 4. finding all invalid sums (everything not in the valid set)
+    # 4. Find all invalid sums (any sum from 0 to max_sum that is not in the valid_sums set)
     invalid_sums = set(range(max_sum + 1)) - valid_sums
     
-    # 5. creating condition strings for the SMV code below that will match the specific problem
+    # 5. Create condition strings for the SMV code to dynamically match the specific problem instance
     splits_cond = " | ".join(f"(_row = {s})" for s in splits)
     valid_cond = " | ".join(f"(_column={s})" for s in sorted(valid_sums))
     invalid_cond = " | ".join(f"(_column={s})" for s in sorted(invalid_sums)) if invalid_sums else "FALSE"
     
-    # 6. building the complete SMV code for the file: dynamic_ssp.smv
+    # 6. Build the complete SMV logic string
     smv_code = f"""MODULE main
 
 VAR
@@ -122,10 +154,10 @@ ASSIGN
     esac;
 
 -- Specifications
-CTLSPEC NAME alway_right_path := AG ((_row=max_sum) -> (_sum & !_xsum));
+CTLSPEC NAME always_right_path := AG ((_row=max_sum) -> (_sum & !_xsum));
 """
 
-    # saving the generated code to a file
+    # Save the generated code string to the specified SMV file
     with open(output_filename, 'w', encoding='utf-8') as f:
         f.write(smv_code)
         
@@ -137,12 +169,12 @@ CTLSPEC NAME alway_right_path := AG ((_row=max_sum) -> (_sum & !_xsum));
 
 if __name__ == "__main__":
     
-    # setup the argument parser
+    # Setup the argument parser for command-line execution
     parser = argparse.ArgumentParser(
         description="Dynamic Subset Sum Problem (SSP) Model Generator and Verifier for nuXmv."
     )
     
-    # define the 'elements' argument as a list of integers (nargs='+' means one or more arguments)
+    # Define the 'elements' argument as a list of integers (nargs='+' means one or more arguments)
     parser.add_argument(
         'elements', 
         metavar='N', 
@@ -151,21 +183,21 @@ if __name__ == "__main__":
         help='A list of positive integers representing the subset sum elements (separated by spaces).'
     )
     
-    # parse the arguments from the command line
+    # Parse the arguments from the command line
     args = parser.parse_args()
     
     try:
-        # getting the directory of this code file and setting the output path (for the SMV file) by that
+        # Get the directory of this code file to set the absolute output path for the SMV file
         script_dir = os.path.dirname(os.path.abspath(__file__))
         output_path = os.path.join(script_dir, 'dynamic_ssp.smv')
         
-        # generating the SMV file using the provided arguments from command line
+        # Generate the SMV file using the parsed arguments
         generate_dynamic_ssp_smv(args.elements, output_path)
         
-        # automatically running nuXmv on the generated file
+        # Automatically run nuXmv on the generated file to test and measure performance
         run_nuxmv(output_path)
         
     except ValueError as e:
-        # catching the validation error (e.g., if negative numbers were provided)
+        # Catch validation errors (e.g., if negative numbers were provided)
         print(e)
         sys.exit(1)
