@@ -41,7 +41,7 @@ def run_nuxmv(smv_file_path: str) -> None:
                 break
             
             # Short sleep to prevent the while-loop from hogging the CPU
-            time.sleep(0.01)
+            time.sleep(0.001)
             
         # Wait for the process to fully complete and capture output
         stdout, stderr = process.communicate()
