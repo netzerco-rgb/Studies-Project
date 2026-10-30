@@ -16,13 +16,13 @@ The project is inspired by the use of state-of-the-art formal hardware verificat
 
 ## Contents
 
-1. [Built With](#built-with)
-2. [Setup and Requirements](#setup-and-requirements)
-3. [Usage](#usage)
-4. [Repository Files](#repository-files)
-5. [Project Goal](#project-goal)
-6. [Limitations](#limitations)
-7. [Notes](#notes)
+1. [Built With](#1-built-with)
+2. [Setup and Requirements](#2-setup-and-requirements)
+3. [Usage](#3-usage)
+4. [Repository Files](#4-repository-files)
+5. [Project Goal](#5-project-goal)
+6. [Limitations](#6-limitations)
+7. [Notes](#7-notes)
 
 
 ## 1. Built With
