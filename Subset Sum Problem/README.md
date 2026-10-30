@@ -164,7 +164,9 @@ Main functionality:
 - Encodes the verification condition
 - Searches for a counterexample
 - Prints a trace if a bad path is found
-- Supports tracking selected points in the computation
+- Supports tracking selected points individually and along a single valid path
+- Checks whether a specified target sum is valid
+- Finds and displays a valid computation path, optionally for a specified target sum
 
 Example:
 
