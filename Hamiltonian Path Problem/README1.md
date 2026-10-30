@@ -136,6 +136,12 @@ The Hamiltonian Path problem involves finding a path through a graph that visits
 
 Two different encoding approaches were developed to represent and formally verify the Hamiltonian Path problem.
 
+**Original input graph:**
+
+![Original graph used for both Hamiltonian Path encodings](images/original_graph.png)
+
+*The input graph has four vertices. Both approaches encode Hamiltonian paths in this same graph, but represent the routing and vertex-visit constraints differently.*
+
 ### 4.1 Tree-Based Approach
 
 The Tree-Based approach converts graph vertices with multiple outgoing connections into chains of binary splitters, representing the routing decisions of biological agents in an NBC network.
@@ -145,6 +151,10 @@ For example, if a vertex is connected to three neighboring vertices, its outgoin
 This introduces intermediate routing states (pseudo-vertices) that represent the agent's movement through the splitter chain. These states are part of the physical routing representation but do not count as additional logical vertices in the Hamiltonian Path.
 
 A valid Hamiltonian Path must visit every original graph vertex exactly once while following legal connections through the routed network.
+
+![Tree-Based network representation with valid Hamiltonian paths highlighted](images/tree_based_routing.png)
+
+*Tree-Based encoding of the input graph. Filled nodes indicate split junctions, hollow nodes indicate pass junctions, and green nodes mark valid Hamiltonian exits. The pink and blue routes illustrate two valid Hamiltonian paths through the routed network.*
 
 **Implementation:**
 
@@ -156,6 +166,10 @@ A valid Hamiltonian Path must visit every original graph vertex exactly once whi
 The Coloring-Based approach represents the graph directly, without introducing intermediate splitter states. Instead, vertex-visit constraints are used to prevent an agent from visiting the same vertex more than once.
 
 Each move follows an existing edge in the graph. A valid Hamiltonian Path is found when all vertices have been visited exactly once.
+
+![Coloring-Based layered network representation with valid Hamiltonian paths highlighted](images/coloring_based_network.png)
+
+*Coloring-Based network representation of the same graph. Each layer represents a successive vertex selection, while the highlighted pink and blue routes show two valid Hamiltonian paths.*
 
 **Implementation:**
 
