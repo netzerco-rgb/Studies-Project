@@ -467,7 +467,7 @@ def check_always_right_path(
     solver.add(bad_final_state)
 
     # display calculated values
-    print(f"Elements:       {list(elements)}")
+    print(f"\nElements:       {list(elements)}")
     print(f"Maximum sum:   {max_sum}")
     print(f"Split rows:    {model_data['split_rows']}")
     print(f"Valid sums:    {sorted(valid_sums)}")
