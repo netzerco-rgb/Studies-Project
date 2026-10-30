@@ -2,7 +2,7 @@
 
 This repository contains the Python code and formal models developed for the Computer Engineering final project **Using Hardware Tools to Test and Formally Verify Biological Circuits** (Project 418).
 
-The project explores how hardware-oriented formal verification tools can be used to model and check **network-based biocomputation (NBC)** circuits. These circuits represent computation as the movement of biological agents through interconnected channels. The implementations are software models of NBC behavior, rather than physical experiments.
+The project explores how hardware-oriented formal verification tools can be used to model and check **Network-Based Biocomputation (NBC)** circuits. These circuits represent computation as the movement of biological agents through interconnected channels. The implementations are software models of NBC behavior, rather than physical experiments.
 
 ## Problems and implementations
 
