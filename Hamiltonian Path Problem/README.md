@@ -7,7 +7,7 @@ The project focuses on using formal hardware verification tools to model and ver
 The code uses two NBC-inspired encoding approaches:
 
 1. **Tree-Based routing**, which decomposes high-degree vertices into binary splitter chains.
-2. **Coloring/Tagging-Based encoding**, which represents the requirement that each vertex is visited only once.
+2. **Coloring-Based encoding**, which represents the requirement that each vertex is visited only once.
 
 Each approach is implemented with two formal verification tools: **nuXmv** and **Z3**. The implementations are software abstractions of NBC circuits, not physical biological devices.
 
