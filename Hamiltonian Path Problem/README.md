@@ -138,7 +138,7 @@ Two different encoding approaches were developed to represent and formally verif
 
 **Original input graph:**
 
-![Original graph used for both Hamiltonian Path encodings](images/original_graph.png)
+<img width="302" height="212" alt="image" src="https://github.com/user-attachments/assets/fd07eea5-ce20-4546-980c-c7f96386432a" />
 
 *The input graph has four vertices. Both approaches encode Hamiltonian paths in this same graph, but represent the routing and vertex-visit constraints differently.*
 
@@ -152,7 +152,7 @@ This introduces intermediate routing states (pseudo-vertices) that represent the
 
 A valid Hamiltonian Path must visit every original graph vertex exactly once while following legal connections through the routed network.
 
-![Tree-Based network representation with valid Hamiltonian paths highlighted](images/tree_based_routing.png)
+<img width="763" height="430" alt="image" src="https://github.com/user-attachments/assets/f0b249fb-5915-4030-9eff-84c6c76627f1" />
 
 *Tree-Based encoding of the input graph. Filled nodes indicate split junctions, hollow nodes indicate pass junctions, and green nodes mark valid Hamiltonian exits. The pink and blue routes illustrate two valid Hamiltonian paths through the routed network.*
 
@@ -167,7 +167,7 @@ The Coloring-Based approach represents the graph directly, without introducing i
 
 Each move follows an existing edge in the graph. A valid Hamiltonian Path is found when all vertices have been visited exactly once.
 
-![Coloring-Based layered network representation with valid Hamiltonian paths highlighted](images/coloring_based_network.png)
+<img width="602" height="402" alt="image" src="https://github.com/user-attachments/assets/794361e5-6119-4f7f-9c05-65e1df0bd394" />
 
 *Coloring-Based network representation of the same graph. Each layer represents a successive vertex selection, while the highlighted pink and blue routes show two valid Hamiltonian paths.*
 
