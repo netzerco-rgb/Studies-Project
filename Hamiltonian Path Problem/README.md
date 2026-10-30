@@ -65,11 +65,6 @@ nuXmv -h
 
 If the command is not recognized, add the directory containing the nuXmv executable to the system `PATH`.
 
-To check the Z3 version used by your Python environment:
-
-```bash
-python -c "import z3; print(z3.get_version_string())"
-```
 
 ## 3. Usage
 
