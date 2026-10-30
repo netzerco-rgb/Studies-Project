@@ -17,6 +17,7 @@ from z3 import (
     Or,
     Solver,
     sat,
+    unsat,
 )
 
 """
@@ -336,7 +337,6 @@ def build_model(
             reached_point = And(
                 next_row == tracked_row,
                 next_column == tracked_column,
-                next_direction == DIAG,
             )
 
             solver.add(
@@ -473,6 +473,29 @@ def check_always_right_path(
     print(f"Valid sums:    {sorted(valid_sums)}")
     print(f"Invalid sums:  {sorted(invalid_sums)}")
     print(f"Path length:   {final_time}")
+
+    # check if one valid path visits ALL tracked points
+    if tracked_points:
+        solver.push()
+        solver.add(is_sum_col_expr(column[final_time], valid_sums))
+
+        print("Tracking Results:  ")
+
+        # check each point individually
+        for point in tracked_points:
+            solver.push()
+            solver.add(model_data["visited"][point][final_time])
+
+            result = solver.check()
+            if result == sat:
+                print(f" - {point}: Reached")
+            elif result == unsat:
+                print(f" - {point}: Wasn't reached")
+            else:
+                print(f" - {point}: Unknown")
+
+            solver.pop()
+            
 
     """ Run Z3 """
     # 1. check if there exists a bad path
