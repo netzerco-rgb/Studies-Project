@@ -227,7 +227,7 @@ python z3_dynamic_hamiltonian_tree.py graph.txt
 
 ### `dynamic_hamilton_coloring_nuxmv.py`
 
-Dynamically generates a **Coloring/Tagging-Based SMV model** and verifies it with nuXmv.
+Dynamically generates a **Coloring-Based SMV model** and verifies it with nuXmv.
 
 Main functionality:
 
@@ -277,7 +277,7 @@ For Hamiltonian Path, the objective is to determine whether an input graph conta
 The project compares two dimensions:
 
 1. **Verification engines:** nuXmv model checking versus Z3 SMT solving.
-2. **Encoding approaches:** Tree-Based routing versus Coloring/Tagging-Based modeling.
+2. **Encoding approaches:** Tree-Based routing versus Coloring-Based modeling.
 
 ### Example
 
@@ -304,7 +304,7 @@ The current implementation has several practical limitations:
 
 - Verification time and memory consumption depend on the number of vertices, connectivity, topology, and whether a Hamiltonian path exists.
 - **Tree-Based routing** introduces intermediate states for splitter chains. These states represent routing structure rather than additional original graph vertices, and they can increase model complexity.
-- **Coloring/Tagging-Based modeling** encodes the no-revisit condition more directly, but it still faces computational limitations on larger graphs.
+- **Coloring-Based modeling** encodes the no-revisit condition more directly, but it still faces computational limitations on larger graphs.
 - An `unknown` result or a manually interrupted execution is **inconclusive**; it is not evidence that the graph has no Hamiltonian path.
 - The memory measurements are sampled process-memory values, not direct measurements of a physical NBC circuit.
 - Successful verification establishes the specified property for the **formal model and assumptions**. It does not independently prove that a fabricated biological circuit would operate without routing or junction errors.
