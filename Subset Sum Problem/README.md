@@ -13,15 +13,17 @@ The project is inspired by the use of state-of-the-art formal hardware verificat
 
 [Back to the repository overview](../README.md)
 
+
 ## Contents
 
-1. Built With
-2. Setup and Requirements
-3. Usage
-4. Repository Files
-5. Project Goal
-6. Limitations
-7. Notes
+1. [Built With](#built-with)
+2. [Setup and Requirements](#setup-and-requirements)
+3. [Usage](#usage)
+4. [Repository Files](#repository-files)
+5. [Project Goal](#project-goal)
+6. [Limitations](#limitations)
+7. [Notes](#notes)
+
 
 ## 1. Built With
 
@@ -218,4 +220,4 @@ The current implementation has several practical limitations:
 
 ## 7. Notes
 
-This SSP implementation serves as a preliminary case study for the project's Hamiltonian Path verification work. See the [Hamiltonian Path README](../Hamiltonian_Path/README.md) for the second problem and its Tree-Based and Coloring-Based encodings.
+This SSP implementation serves as a preliminary case study for the project's Hamiltonian Path verification work. See the [Hamiltonian Path README](./Hamiltonian%20Path%20Problem/README.md) for the second problem and its Tree-Based and Coloring-Based encodings.
