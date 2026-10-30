@@ -55,7 +55,7 @@ Make sure `nuXmv` is installed and available on your system `PATH` before runnin
 
 ## Getting started
 
-Open the [SSP README](SSP/README.md) or [Hamiltonian Path README](Hamiltonian_Path/README.md) for the corresponding problem description, script explanations, input format, and run commands. Commands in the subfolder READMEs assume you are running them from the relevant folder.
+Open the [SSP README](./Subset%20Sum%20Problem/README.md) or [Hamiltonian Path README](./Hamiltonian%20Path%20Problem/README.md) for the corresponding problem description, script explanations, input format, and run commands. Commands in the subfolder READMEs assume you are running them from the relevant folder.
 
 ## Scope
 
