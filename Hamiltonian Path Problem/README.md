@@ -18,10 +18,11 @@ Each approach is implemented with two formal verification tools: **nuXmv** and *
 1. [Built With](#1-built-with)
 2. [Setup and Requirements](#2-setup-and-requirements)
 3. [Usage](#3-usage)
-4. [Repository Files](#4-repository-files)
-5. [Project Goal](#5-project-goal)
-6. [Limitations](#6-limitations)
-7. [Notes](#7-notes)
+4. [Hamiltonian Path Modeling Approaches](#4-hamiltonian-path-modeling-approaches)
+5. [Repository Files](#5-repository-files)
+6. [Project Goal](#6-project-goal)
+7. [Limitations](#7-limitations)
+8. [Notes](#8-notes)
 
 ## 1. Built With
 
@@ -129,7 +130,49 @@ In the Z3 path-existence formulation, `sat` means that a valid path exists, whil
 
 The benchmark implementations also report **Total Execution Time** and **Max Memory Usage** (sampled, in KB). For nuXmv, the measurement includes the Python runner and the nuXmv process; for Z3, it includes Python with Z3. The sampled maximum is an observed value, not an exact system-wide memory peak.
 
-## 4. Repository Files
+## 4. Hamiltonian Path Modeling Approaches
+
+The Hamiltonian Path problem involves finding a path through a graph that visits every vertex exactly once. In this project, the graph is represented as a Network-Based Biocomputation (NBC) model, where agents move through connected vertices and routing junctions.
+
+Two different encoding approaches were developed to represent and formally verify the Hamiltonian Path problem.
+
+### 4.1 Tree-Based Approach
+
+The Tree-Based approach converts graph vertices with multiple outgoing connections into chains of binary splitters, representing the routing decisions of biological agents in an NBC network.
+
+For example, if a vertex is connected to three neighboring vertices, its outgoing connections are represented using a sequence of binary routing junctions rather than a single junction with three possible exits.
+
+This introduces intermediate routing states (pseudo-vertices) that represent the agent's movement through the splitter chain. These states are part of the physical routing representation but do not count as additional logical vertices in the Hamiltonian Path.
+
+A valid Hamiltonian Path must visit every original graph vertex exactly once while following legal connections through the routed network.
+
+**Implementation:**
+
+- **nuXmv:** Generates an SMV transition system containing the original vertices, intermediate splitter states, and transitions between them. The model checker verifies whether a completed Hamiltonian Path is reachable.
+- **Z3:** Encodes the logical Hamiltonian Path constraints together with the physical routing constraints, verifying that a candidate path is valid in both representations.
+
+### 4.2 Coloring-Based Approach
+
+The Coloring-Based approach represents the graph directly, without introducing intermediate splitter states. Instead, vertex-visit constraints are used to prevent an agent from visiting the same vertex more than once.
+
+Each move follows an existing edge in the graph. A valid Hamiltonian Path is found when all vertices have been visited exactly once.
+
+**Implementation:**
+
+- **nuXmv:** Uses Boolean visited flags (tags) to record which vertices have already been visited. The transition system prevents revisiting a previously visited vertex and checks whether all vertices can be reached in a valid sequence.
+- **Z3:** Uses symbolic path variables and the `Distinct` constraint to ensure that every vertex is visited exactly once. Adjacency constraints ensure that consecutive vertices are connected by valid graph edges.
+
+### 4.3 Comparison of the Approaches
+
+The main difference between the approaches is how the graph and routing decisions are represented.
+
+The Tree-Based approach explicitly models the binary routing structure of an NBC network, making the representation more closely related to the physical movement of biological agents. However, the additional intermediate states increase the complexity of the verification model.
+
+The Coloring-Based approach uses a more direct representation of the graph, avoiding intermediate routing states while enforcing vertex-visit constraints.
+
+Both approaches are implemented using nuXmv and Z3 to compare their formal verification performance, execution time, and memory usage.
+
+## 5. Repository Files
 
 ### `dynamic_hamiltonian_tree_nuxmv.py`
 
@@ -214,7 +257,7 @@ Text files containing graph instances used for testing, including small examples
 
 An earlier standalone Hamiltonian Path model that may be retained as a small example of the nuXmv encoding.
 
-## 5. Project Goal
+## 6. Project Goal
 
 The goal of this project is to apply formal hardware verification techniques to NBC-inspired representations of **NP-Complete problems**.
 
@@ -244,7 +287,7 @@ v1 -> v2 -> v3 -> v4
 
 A successful path-existence check establishes that such a sequence is possible in the specified graph and encoding. The experiments also compare verification time and memory usage across different graph instances.
 
-## 6. Limitations
+## 7. Limitations
 
 The current implementation has several practical limitations:
 
@@ -255,7 +298,7 @@ The current implementation has several practical limitations:
 - The memory measurements are sampled process-memory values, not direct measurements of a physical NBC circuit.
 - Successful verification establishes the specified property for the **formal model and assumptions**. It does not independently prove that a fabricated biological circuit would operate without routing or junction errors.
 
-## 7. Notes
+## 8. Notes
 
 This Hamiltonian Path implementation extends the project's earlier **Subset Sum Problem (SSP)** case study. Both problems use nuXmv and Z3, but the verification conditions are not identical: the SSP Z3 implementation searches for an **invalid computation**, while the Hamiltonian Path implementations search for the **existence of a valid path**.
 
