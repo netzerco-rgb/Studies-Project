@@ -222,4 +222,4 @@ The current implementation has several practical limitations:
 
 ## 7. Notes
 
-This SSP implementation serves as a preliminary case study for the project's Hamiltonian Path verification work. See the [Hamiltonian Path README](./Hamiltonian%20Path%20Problem/README.md) for the second problem and its Tree-Based and Coloring-Based encodings.
+This SSP implementation serves as a preliminary case study for the project's Hamiltonian Path verification work. See the [Hamiltonian Path README](../Hamiltonian%20Path%20Problem/README.md) for the second problem and its Tree-Based and Coloring-Based encodings.
