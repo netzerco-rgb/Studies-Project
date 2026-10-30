@@ -315,4 +315,4 @@ This Hamiltonian Path implementation extends the project's earlier **Subset Sum 
 
 The experimental results showed that **Coloring-Based Z3** performed particularly well on larger tested satisfiable graphs, while performance varied by input topology, encoding, and verification engine. These observations apply to the evaluated instances and do not imply universal superiority of one tool or encoding.
 
-For the SSP implementation and its commands, see the [SSP README](./Subset%20Sum%20Problem/README.md) .
+For the SSP implementation and its commands, see the [SSP README](../Subset%20Sum%20Problem/README.md).
