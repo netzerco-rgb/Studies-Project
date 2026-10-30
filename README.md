@@ -10,8 +10,8 @@ The repository is organized into two parts:
 
 | Problem | Purpose | Verification tools | Documentation |
 | --- | --- | --- | --- |
-| **Subset Sum Problem (SSP)** | Model and verify the legal outputs of an SSP computation network | nuXmv, Z3 | [SSP README](SSP/README.md) |
-| **Hamiltonian Path** | Check whether a graph contains a path that visits every vertex exactly once, using two NBC-inspired encodings | nuXmv, Z3 | [Hamiltonian Path README](Hamiltonian_Path/README.md) |
+| **Subset Sum Problem (SSP)** | Model and verify the legal outputs of an SSP computation network | nuXmv, Z3 | [SSP README](./Subset%20Sum%20Problem/README.md) |
+| **Hamiltonian Path** | Check whether a graph contains a path that visits every vertex exactly once, using two NBC-inspired encodings | nuXmv, Z3 | [Hamiltonian Path README](./Hamiltonian%20Path%20Problem/README.md) |
 
 SSP is used as an initial case study. Hamiltonian Path extends the project with two modeling approaches—**Tree-Based routing** and **Coloring/Tagging-Based encoding**—each evaluated using both verification engines.
 
