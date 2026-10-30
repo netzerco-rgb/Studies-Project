@@ -267,9 +267,6 @@ python z3_dynamic_hamilton_coloring.py graph.txt
 
 Text files containing graph instances used for testing, including small examples, larger connected graphs, and an instance with no Hamiltonian path. The exact filenames depend on which test graphs are included in the repository.
 
-### `HamiltonPath.smv` (optional)
-
-An earlier standalone Hamiltonian Path model that may be retained as a small example of the nuXmv encoding.
 
 ## 6. Project Goal
 
