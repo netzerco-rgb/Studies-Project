@@ -23,9 +23,7 @@ Studies-Project/
 ├── SSP/
 │   ├── README.md
 │   ├── dynamic_ssp_nuxmv.py
-│   ├── ssp_agent_nuxmv_runner.py
-│   ├── z3_dynamic_ssp.py
-│   └── Z3_SSP_Dynamic _old.py       # Optional legacy version
+│   └── z3_dynamic_ssp.py
 └── Hamiltonian_Path/
     ├── README.md
     ├── dynamic_hamiltonian_tree_nuxmv.py
@@ -35,8 +33,6 @@ Studies-Project/
     ├── HamiltonPath.smv             # Optional standalone example model
     └── graph*.txt                  # Graph instances / input files
 ```
-
-*This is the intended layout after reorganizing the currently flat repository. Files shown as optional can be omitted if they are not part of the final code release.*
 
 ## Requirements
 
