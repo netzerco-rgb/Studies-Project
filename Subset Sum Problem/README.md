@@ -115,18 +115,6 @@ This checks whether the computation path passes through the selected row-column 
 
 ## 4. Repository Files
 
-### `ssp_agent_nuxmv_runner.py`
-
-This script is used to run a nuXmv model from Python.
-
-It executes nuXmv from the command line and prints the verification output. This is useful for connecting generated or existing SMV files with the nuXmv model checker automatically.
-
-Main functionality:
-
-- Runs nuXmv on an SMV model file
-- Prints the verification output
-- Reports execution errors if nuXmv fails
-
 ### `dynamic_ssp_nuxmv.py`
 
 This script dynamically generates an SMV model for the Subset Sum Problem.
@@ -179,10 +167,6 @@ With tracked points:
 ```bash
 python z3_dynamic_ssp.py 3 4 7 --track 3,1 7,3 14,8
 ```
-
-### `Z3_SSP_Dynamic _old.py` (optional legacy file)
-
-An older Z3 SSP implementation retained for reference. Use `z3_dynamic_ssp.py` for the main implementation.
 
 ## 5. Project Goal
 
