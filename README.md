@@ -20,11 +20,11 @@ SSP is used as an initial case study. Hamiltonian Path extends the project with 
 ```text
 Studies-Project/
 ├── README.md
-├── SSP/
+├── Subset Sum Problem/
 │   ├── README.md
 │   ├── dynamic_ssp_nuxmv.py
 │   └── z3_dynamic_ssp.py
-└── Hamiltonian_Path/
+└── Hamiltonian Path Problem/
     ├── README.md
     ├── dynamic_hamiltonian_tree_nuxmv.py
     ├── z3_dynamic_hamiltonian_tree.py
