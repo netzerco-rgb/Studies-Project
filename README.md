@@ -30,7 +30,7 @@ Studies-Project/
     ├── z3_dynamic_hamiltonian_tree.py
     ├── dynamic_hamilton_coloring_nuxmv.py
     ├── z3_dynamic_hamilton_coloring.py
-    ├── dynamic_tree_v1.smv             # Optional standalone example model
+    ├── dynamic_tree_v1.smv             # Optional standalone example smv model of Tree-Based approach using nuXmv
     └── graph*.txt                  # Graph instances / input files
 ```
 
