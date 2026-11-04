@@ -64,7 +64,7 @@ If the command is not recognized, add the directory containing the nuXmv executa
 
 ## 3. Usage
 
-Run these commands from the `SSP` folder.
+Run these commands from the `Subset Sum Problem` folder.
 
 ### Run the dynamic nuXmv version
 
