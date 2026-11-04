@@ -69,11 +69,11 @@ If the command is not recognized, add the directory containing the nuXmv executa
 
 ## 3. Usage
 
-Run the commands below from the `Hamiltonian_Path` folder.
+Run the commands below from the `Hamiltonian Path Problem` folder.
 
 ### Graph input
 
-The scripts read a graph from a text file. A representative **undirected** example is:
+The scripts read a graph from a text file which must be located in the same folder of the relevant code file. A representative **undirected** example is:
 
 ```text
 vertices: v1 v2 v3 v4
@@ -89,7 +89,7 @@ The first line declares the vertices, and each following line specifies an edge.
 ### Run the Tree-Based nuXmv version
 
 ```bash
-python dynamic_hamiltonian_tree_nuxmv.py <Hamiltonian-folder>/Inputs/graph.txt
+python dynamic_hamiltonian_tree_nuxmv.py graph.txt
 ```
 
 This script generates an SMV transition-system model that represents graph routing through binary splitter chains and runs nuXmv to check for a Hamiltonian path. The Tree-Based implementation can test possible starting vertices until it finds a valid path or exhausts the candidates.
@@ -97,7 +97,7 @@ This script generates an SMV transition-system model that represents graph routi
 ### Run the Tree-Based Z3 version
 
 ```bash
-python z3_dynamic_hamiltonian_tree.py <Hamiltonian-folder>/Inputs/graph.txt
+python z3_dynamic_hamiltonian_tree.py graph.txt
 ```
 
 This script represents the tree-routed graph using SMT constraints and checks whether a Hamiltonian path can be found while respecting the routing structure and original graph adjacency.
@@ -105,7 +105,7 @@ This script represents the tree-routed graph using SMT constraints and checks wh
 ### Run the Coloring-Based nuXmv version
 
 ```bash
-python dynamic_hamilton_coloring_nuxmv.py <Hamiltonian-folder>/Inputs/graph.txt
+python dynamic_hamilton_coloring_nuxmv.py graph.txt
 ```
 
 This script generates an SMV model that tracks vertex visits through state flags/tags and uses nuXmv to check whether all vertices can be visited exactly once along valid edges.
@@ -113,7 +113,7 @@ This script generates an SMV model that tracks vertex visits through state flags
 ### Run the Coloring-Based Z3 version
 
 ```bash
-python z3_dynamic_hamilton_coloring.py <Hamiltonian-folder>/Inputs/graph.txt
+python z3_dynamic_hamilton_coloring.py graph.txt
 ```
 
 This script represents a candidate Hamiltonian path as a sequence of symbolic vertices. Z3 uses adjacency constraints to require a valid edge between consecutive vertices and the `Distinct` constraint to prevent revisiting a vertex.
@@ -204,7 +204,7 @@ Main functionality:
 Example:
 
 ```bash
-python dynamic_hamiltonian_tree_nuxmv.py <Hamiltonian-folder>/Inputs/graph.txt
+python dynamic_hamiltonian_tree_nuxmv.py graph.txt
 ```
 
 ### `z3_dynamic_hamiltonian_tree.py`
@@ -222,7 +222,7 @@ Main functionality:
 Example:
 
 ```bash
-python z3_dynamic_hamiltonian_tree.py <Hamiltonian-folder>/Inputs/graph.txt
+python z3_dynamic_hamiltonian_tree.py graph.txt
 ```
 
 ### `dynamic_hamilton_coloring_nuxmv.py`
@@ -241,7 +241,7 @@ Main functionality:
 Example:
 
 ```bash
-python dynamic_hamilton_coloring_nuxmv.py <Hamiltonian-folder>/Inputs/graph.txt
+python dynamic_hamilton_coloring_nuxmv.py graph.txt
 ```
 
 ### `z3_dynamic_hamilton_coloring.py`
@@ -260,7 +260,7 @@ Main functionality:
 Example:
 
 ```bash
-python z3_dynamic_hamilton_coloring.py <Hamiltonian-folder>/Inputs/graph.txt
+python z3_dynamic_hamilton_coloring.py graph.txt
 ```
 
 ### Graph input files (`graph*.txt`)
