@@ -215,9 +215,9 @@ def build_model(
     solver.add(direction[0] == DOWN)
     solver.add(junction[0] == SPLIT)
 
-    # initialize all tracked visited points to False at time 0
-    for point_variables in visited.values():
-        solver.add(point_variables[0] == False)
+    # initialize all tracked visited points to False at time 0, the agent starts at (0,0)
+    for point, point_variables in visited.items():
+        solver.add(point_variables[0] == (point == (0, 0)))
 
     # transitions for (0 <= time <= max_sum)
     for time in range(path_len):
