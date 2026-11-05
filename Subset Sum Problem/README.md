@@ -174,7 +174,7 @@ python z3_dynamic_ssp.py 3 4 7 --track 3,1 7,3 14,8
 
 An auto-generated nuXmv formal model file. This artifact is automatically produced by running `dynamic_ssp_nuxmv.py 3 4 7`. It contains the state-machine and transition specifications representing the biological circuit designed to solve the requested Subset Sum Problem for the intance {3,4,7}.
 
-Note: This is an output file and should not be edited manually.
+Note: This is an automatically generated artifact and should not be modified manually.
 
 ## 5. Project Goal
 
