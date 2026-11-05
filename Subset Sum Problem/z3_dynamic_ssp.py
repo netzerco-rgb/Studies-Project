@@ -60,6 +60,7 @@ def validate_elements(elements: Sequence[int]) -> None:
             "Error: All subset-sum elements must be positive integers."
         )
 
+
 # calculates: split rows
 def calculate_split_rows(elements: Sequence[int]) -> List[int]:
     split_rows = []
@@ -70,6 +71,7 @@ def calculate_split_rows(elements: Sequence[int]) -> List[int]:
         split_rows.append(current_sum)
 
     return split_rows
+
 
 # calculates: possible subset sums
 def calculate_valid_sums(elements: Sequence[int]) -> Set[int]:
@@ -84,10 +86,11 @@ def calculate_valid_sums(elements: Sequence[int]) -> Set[int]:
 
     return valid_sums
 
+
 # calculates: not valid subset sums
 def calculate_invalid_sums(
-    max_sum: int,
-    valid_sums: Set[int],
+        max_sum: int,
+        valid_sums: Set[int],
 ) -> Set[int]:
     all_columns = set(range(max_sum + 1))
     return all_columns - valid_sums
@@ -99,21 +102,28 @@ def values_expression(variable, values: Sequence[int]) -> BoolRef:
         return BoolVal(False)
 
     return Or(*[variable == value for value in values])
+
+
 # split rows
 def is_split_row_expr(row, split_rows: Sequence[int]) -> BoolRef:
     return values_expression(row, split_rows)
+
+
 # sum
 def is_sum_col_expr(column, valid_sums: Set[int]) -> BoolRef:
     return values_expression(column, sorted(valid_sums))
+
+
 # xsum
 def is_xsum_col_expr(column, invalid_sums: Set[int]) -> BoolRef:
     return values_expression(column, sorted(invalid_sums))
 
+
 # Z3 dynamic model for SSP
 def build_model(
-    elements: Sequence[int],
-    path_len: int | None = None,
-    tracked_points: Sequence[Tuple[int, int]] | None = None,
+        elements: Sequence[int],
+        path_len: int | None = None,
+        tracked_points: Sequence[Tuple[int, int]] | None = None,
 ):
     # 1. input validation: elements must be a non-empty list of positive integers
     validate_elements(elements)
@@ -128,7 +138,7 @@ def build_model(
     valid_sums = calculate_valid_sums(elements)
 
     """ TEST ONLY: pretend that 7 is not a valid subset sum """
-    #valid_sums.discard(7)
+    # valid_sums.discard(7)
 
     # 5. calculating all invalid subset sums
     invalid_sums = calculate_invalid_sums(max_sum, valid_sums)
@@ -381,11 +391,12 @@ def z3_int(model: ModelRef, expression) -> int:
 
     return value.as_long()
 
+
 def print_trace(
-    model: ModelRef,
-    model_data: dict,
-    final_time: int,
-    trace_title: str = "Counterexample trace:",
+        model: ModelRef,
+        model_data: dict,
+        final_time: int,
+        trace_title: str = "Counterexample trace:",
 ) -> None:
     row = model_data["row"]
     column = model_data["column"]
@@ -432,12 +443,11 @@ def print_trace(
         print(trace_line)
 
 
- # verifies that no wrong complete path exists
+# verifies that no wrong complete path exists
 def check_always_right_path(
-    elements: Sequence[int],
-    tracked_points: Sequence[Tuple[int, int]] | None = None,
+        elements: Sequence[int],
+        tracked_points: Sequence[Tuple[int, int]] | None = None,
 ) -> bool:
-
     solver, model_data = build_model(
         elements=elements,
         path_len=sum(elements),
@@ -464,6 +474,7 @@ def check_always_right_path(
         ),
     )
 
+    solver.push()
     solver.add(bad_final_state)
 
     # display calculated values
@@ -474,29 +485,6 @@ def check_always_right_path(
     print(f"Invalid sums:  {sorted(invalid_sums)}")
     print(f"Path length:   {final_time}")
 
-    # check if one valid path visits ALL tracked points
-    if tracked_points:
-        solver.push()
-        solver.add(is_sum_col_expr(column[final_time], valid_sums))
-
-        print("Tracking Results:  ")
-
-        # check each point individually
-        for point in tracked_points:
-            solver.push()
-            solver.add(model_data["visited"][point][final_time])
-
-            result = solver.check()
-            if result == sat:
-                print(f" - {point}: Reached")
-            elif result == unsat:
-                print(f" - {point}: Wasn't reached")
-            else:
-                print(f" - {point}: Unknown")
-
-            solver.pop()
-            
-
     """ Run Z3 """
     # 1. check if there exists a bad path
     result = solver.check()
@@ -504,22 +492,61 @@ def check_always_right_path(
     # 2. print results
     print(f"Z3 result: {result}")
 
-    if result == sat:
-        print(
-            "Counterexample found: a complete computation ends at an invalid column."
-        )
 
+    if result == sat:
+        print("Counterexample found: a complete computation ends at an invalid column.")
         model = solver.model()
         print_trace(model, model_data, final_time)
 
-        return False
+    elif result == unsat:
+        print("No bad computation path exists.")
+        print("Therefore, every complete bounded path ends at a valid subset-sum column.\n")
 
-    print("No bad computation path exists.")
-    print(
-        "Therefore, every complete bounded path ends at a valid subset-sum column.\n"
-    )
+    else:
+        print("Verification inconclusive: Z3 returned unknown.\n")
 
-    return True
+    # Remove the bad_final_state constraint
+    solver.pop()
+
+    # tracking results after the main verification
+    if tracked_points:
+        print("Tracking Results:")
+
+        for point in tracked_points:
+            solver.push()
+            solver.add(model_data["visited"][point][final_time])
+
+            track_result = solver.check()
+
+            if track_result == sat:
+                print(f" - {point}: Reached")
+            elif track_result == unsat:
+                print(f" - {point}: Wasn't reached")
+            else:
+                print(f" - {point}: Unknown")
+
+            solver.pop()
+
+        # Check whether one single path reaches ALL tracked points
+        solver.push()
+        solver.add(*[
+            model_data["visited"][point][final_time]
+            for point in tracked_points
+        ])
+
+        track_result = solver.check()
+
+        if track_result == sat:
+            print(" - All tracked points on one path: Reached")
+        elif track_result == unsat:
+            print(" - All tracked points on one path: Wasn't reached")
+        else:
+            print(" - All tracked points on one path: Unknown")
+
+        solver.pop()
+
+    return result == unsat
+
 
 
 # check if a specific sum is valid
@@ -541,13 +568,13 @@ def check_specific_sum(elements: Sequence[int], target_sum: int) -> bool:
     print(f"NO: {target_sum} is not a valid subset sum.")
     return False
 
+
 # shows correct path/s
 def show_correct_path(
-    elements: Sequence[int],
-    target_sum: int | None = None,
-    tracked_points: Sequence[Tuple[int, int]] | None = None,
+        elements: Sequence[int],
+        target_sum: int | None = None,
+        tracked_points: Sequence[Tuple[int, int]] | None = None,
 ) -> bool:
-
     solver, model_data = build_model(
         elements=elements,
         path_len=sum(elements),
@@ -614,7 +641,6 @@ def show_correct_path(
 
 # converts command line from '3,1' into (3, 1)
 def parse_tracked_point(value: str) -> Tuple[int, int]:
-
     try:
         row_text, column_text = value.split(",")
         tracked_row = int(row_text)
@@ -716,13 +742,13 @@ def main() -> None:
     except ValueError as error:
         print(error)
         sys.exit(1)
-        
+
     finally:
         # 2. Stop timer and extract peak memory usage for Windows
         end_time = time.perf_counter()
         process = psutil.Process(os.getpid())
         peak_memory_kb = process.memory_info().peak_wset / 1024
-        
+
         print("\n--- Performance Metrics ---")
         print(f"Execution Time: {end_time - start_time:.4f} seconds")
         print(f"Max Memory Usage (Z3): {peak_memory_kb:.2f} KB")
