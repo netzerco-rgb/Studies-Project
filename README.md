@@ -24,6 +24,8 @@ Studies-Project/
 │   ├── README.md
 │   ├── dynamic_ssp_nuxmv.py
 │   └── z3_dynamic_ssp.py
+    ├── Output Files/
+        └── dynamic_ssp_347_nuxmv.smv
 └── Hamiltonian Path Problem/
     ├── README.md
     ├── dynamic_hamiltonian_tree_nuxmv.py
