@@ -269,7 +269,7 @@ python z3_dynamic_hamilton_coloring.py graph.txt
 
 Text files containing graph instances used for testing, including small examples, larger connected graphs, and an instance with no Hamiltonian path. The exact filenames depend on which test graphs are included in the repository.
 
-### 5.1 Output Files
+### 5.2 Output Files
 
 ### 'dynamic_hamiltonian_tree_graph.txt_nuxmv.smv'
 
