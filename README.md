@@ -23,8 +23,8 @@ Studies-Project/
 ├── Subset Sum Problem/
 │   ├── README.md
 │   ├── dynamic_ssp_nuxmv.py
-│   └── z3_dynamic_ssp.py
-    ├── Output Files/
+│   ├── z3_dynamic_ssp.py
+    └── Output Files/
         └── dynamic_ssp_347_nuxmv.smv
 └── Hamiltonian Path Problem/
     ├── README.md
@@ -32,8 +32,10 @@ Studies-Project/
     ├── z3_dynamic_hamiltonian_tree.py
     ├── dynamic_hamilton_coloring_nuxmv.py
     ├── z3_dynamic_hamilton_coloring.py
-    ├── dynamic_tree_v1.smv             # Optional standalone example smv model of Tree-Based approach using nuXmv
-    └── graph*.txt                  # Graph instances / input files
+    ├── Input Files/
+        └── graph*****.txt                  # Graph instances / input files
+    └── Output Files/
+        └── dynamic_hamiltonian_tree_graph.txt_nuxmv.smv             # Optional standalone example smv model of Tree-Based approach using nuXmv
 ```
 
 ## Requirements
