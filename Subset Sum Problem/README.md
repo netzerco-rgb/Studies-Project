@@ -168,7 +168,7 @@ With tracked points:
 python z3_dynamic_ssp.py 3 4 7 --track 3,1 7,3 14,8
 ```
 
-## 4.1 Output Files
+### 4.1 Output Files
 
 ### `dynamic_ssp_347_nuxmv.smv`
 
