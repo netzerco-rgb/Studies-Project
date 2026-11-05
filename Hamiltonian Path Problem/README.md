@@ -263,10 +263,19 @@ Example:
 python z3_dynamic_hamilton_coloring.py graph.txt
 ```
 
-### Graph input files (`graph*.txt`)
+### 5.1 Input Files
+
+### 'graph*****.txt'
 
 Text files containing graph instances used for testing, including small examples, larger connected graphs, and an instance with no Hamiltonian path. The exact filenames depend on which test graphs are included in the repository.
 
+### 5.1 Output Files
+
+### 'dynamic_hamiltonian_tree_graph.txt_nuxmv.smv'
+
+An auto-generated nuXmv formal model utilizing the **Tree approach** for the Hamiltonian Path Problem. Produced by running `dynamic_hamiltonian_tree_nuxmv.py graph.txt`, it contains the finite state machine (FSM) simulating a biological agent's movement through a physical network of split/pass junctions corresponding to Tree representation of the input file 'graph.txt'. The model is designed to verify the existence of a valid path (`exists_hamiltonian_path`) across this specific graph.
+
+Note: This is an automatically generated artifact and should not be modified manually.
 
 ## 6. Project Goal
 
