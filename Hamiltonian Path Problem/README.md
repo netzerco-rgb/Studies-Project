@@ -275,6 +275,8 @@ Text files containing graph instances used for testing, including small examples
 
 An auto-generated nuXmv formal model utilizing the **Tree approach** for the Hamiltonian Path Problem. Produced by running `dynamic_hamiltonian_tree_nuxmv.py graph.txt`, it contains the finite state machine (FSM) simulating a biological agent's movement through a physical network of split/pass junctions corresponding to Tree representation of the input file 'graph.txt'. The model is designed to verify the existence of a valid path (`exists_hamiltonian_path`) across this specific graph.
 
+It is important to clarify that this SMV file will be saved in the system under this name "dynamic_tree_<start_vertex>.smv" as '<start_vertex>' refers to the intial vertex of the hamiltonian path search in the given graph. 
+
 Note: This is an automatically generated artifact and should not be modified manually.
 
 ## 6. Project Goal
